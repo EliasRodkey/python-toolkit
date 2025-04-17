@@ -7,7 +7,7 @@ Author: Elias
 """
 
 import pytest
-from package_name.module_template import MyClass, sample_function
+from super_logger.logger import MyClass, sample_function
 
 
 # Test Class for MyClass
