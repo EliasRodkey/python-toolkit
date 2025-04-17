@@ -7,7 +7,7 @@ Author: Elias
 """
 
 import pytest
-from super_logger.logger import MyClass, sample_function
+from loggers.logger import MyClass, sample_function
 
 
 # Test Class for MyClass

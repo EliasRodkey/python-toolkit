@@ -28,7 +28,8 @@ class Logger:
             cls: refers to the class itself, always an argument in the __new__ method for classes
                 (like self for __init__ method)  
             name (str): the name of the logger instance being created, will be added to _instances{}
-            level: a logging level #TODO understand how the logging level is used here
+            level: sets the output logging level for the logger at creation, can be changed during runtime using
+                logger.setLevel(logger.LEVEL)
             log_to_file (bool): default False. if False no file handler created, if True automatic log file created using standard format
         
         Returns:
@@ -37,7 +38,7 @@ class Logger:
         # TODO: Add descriptions of what each code block does here
         if name in cls._instances:
             return cls._instances[name]
-
+        
         instance = super(Logger, cls).__new__(cls)
         instance.logger = logging.getLogger(name)
         instance.logger.setLevel(level)
