@@ -8,6 +8,7 @@ functions:
 """
 from datetime import datetime
 from enum import Enum
+import os
 from typing import List, Dict, Union
 
 
@@ -43,9 +44,6 @@ def create_datestamp() -> str:
     """
     Creates a string of the current datetime YYYY-MM-DD
 
-    Args:
-        None
-    
     Returns:
         the current days date as a string    
     """
@@ -55,9 +53,6 @@ def create_datestamp() -> str:
 def create_timestamp() -> str:
     """
     Creates a string of the current time HHMMSS
-
-    Args:
-        None
     
     Returns:
         the current time as a string    
@@ -69,17 +64,24 @@ def create_log_datetime_stamp() -> str:
     """
     Uses current datetime and program run id to create a datetime stamp for log file
 
-    Args:
-        None
-
     Returns:
         str: a log filename datetime stamp
     """
     return f'{create_datestamp()}_{create_timestamp()}'
 
 
+def compose_global_run_id(self, run_name: str) -> str:
+    """
+    Creates an ID for the current run of the program to be used across loggers
+
+    Args:
+        run_name (str): a name to help identify the run (configuration details or unique parameters)
+    """
+    time_id = create_log_datetime_stamp()
+    return f'{time_id}_{run_name}'
+
+
 if __name__ == "__main__":
-    sample_data = [10, 20, 30, 40, 50]
     date = create_datestamp()
     time = create_timestamp()
     datetime_stamp = create_log_datetime_stamp()
