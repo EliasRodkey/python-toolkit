@@ -19,7 +19,7 @@ class Logger:
 
     # Initialize instances dictionary
     _instances = {}
-    LOG_FILE_DEFAULT_DIRECTORY: str = 'docs\logs'
+    LOG_FILE_DEFAULT_DIRECTORY: str = 'data\\logs'
 
     # Adds logging levels to Logger class so logging library doesn't have to imported every time Logger class is imported
     DEBUG = logging.DEBUG
@@ -74,7 +74,7 @@ class Logger:
             ):
         # Initialize instance level variables
         self.name = name
-        self.log_file_defaullt_dir = os.path.join(os.path.abspath(os.curdir, log_file_default_dir))
+        self.log_file_defaullt_dir = os.path.join(os.path.abspath(os.curdir), log_file_default_dir)
 
         # Create log file directory if it doesn't exist
         if not os.path.exists(self.log_file_defaullt_dir):

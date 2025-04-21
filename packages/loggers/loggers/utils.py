@@ -3,13 +3,18 @@ common.py
 
 A python module which contains generic functions related to the logger and super_logger classes
 
-functions:
-    
+Class:
+    ELoggingFormats: an Enum class which stores different formatting strings for logger formatting
+
+Functions:
+    create_datestamp: generates todays date as a string
+    create_timestamp: generates the current time as a string
+    create_log_datetime_stamp: combines the date and timestamp for a unique file identifier
+    compose_global_run_id: creates an id unique to the program run based on the datetime stamp and a run ID   
 """
+
 from datetime import datetime
 from enum import Enum
-import os
-from typing import List, Dict, Union
 
 
 class ELoggingFormats(str, Enum):
@@ -70,7 +75,7 @@ def create_log_datetime_stamp() -> str:
     return f'{create_datestamp()}_{create_timestamp()}'
 
 
-def compose_global_run_id(self, run_name: str) -> str:
+def compose_global_run_id(run_name: str) -> str:
     """
     Creates an ID for the current run of the program to be used across loggers
 

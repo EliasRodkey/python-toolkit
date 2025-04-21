@@ -4,9 +4,8 @@
 
 
 # Import specific functions or classes for direct access at a package level
-# Use Explicit Imports 
-# from .module1 import function1, class1
-# from .module2 import function2
+from .logger import Logger
+from .utils import ELoggingFormats
 
 # Define package-level variables
 __version__ = '0.1.0'
