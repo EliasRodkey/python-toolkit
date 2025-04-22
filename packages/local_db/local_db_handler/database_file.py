@@ -8,7 +8,8 @@ required project structure:
 
 root\\
 |───data
-|   └──logs 
+|   └──db_files
+|   └──log_dir 
 |───src
 └   └──package
 
@@ -18,11 +19,6 @@ Class:
         - delete_db: deletes a specified database file in a given directory
         - move_db: moves a specified database file from one directory to another inside of a project
 '''
-# Author: Elias Rodkey
-# Created: 2024-17-11
-# Version: 0.2.0
-# License: MIT
-
 
 # Standard library imports
 import logging

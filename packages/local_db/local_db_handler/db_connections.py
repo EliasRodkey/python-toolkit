@@ -8,11 +8,6 @@ Funcitons:
     - create_engine_conn: creates a SQLalchemy engine object
     - create_session: creates and returns a SQLalchemy Session class object
 '''
-# Author: Elias Rodkey
-# Created: 2024-12-10
-# Version: 0.1.0
-# License: MIT
-
 
 #Standard library imports
 import logging

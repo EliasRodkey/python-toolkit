@@ -8,11 +8,10 @@ Funciton:
     - test_create_engine_conn: atempts to create a connection engine object to a local URL
     - test_create_sesstion:
 '''
-# Author: Elias Rodkey
-# Created: 2024-12-10
-# Version: 0.2.0
-# License: MIT
 
+# Add current directory to path
+import sys
+sys.path.insert(0, '.')
 
 # Standard library imports
 import os
@@ -22,7 +21,7 @@ import pytest
 from sqlalchemy.exc import OperationalError
 
 # local imports
-from src.local_db_handler.db_connections import create_engine_conn, create_session
+from local_db_handler.db_connections import create_engine_conn, create_session
 
 
 # Constants

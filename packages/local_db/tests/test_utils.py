@@ -13,11 +13,10 @@ Funciton:
     - test_is_db_file_true: checks example db filenames that should return True
     - test_is_db_file_false: checks examples db filenames that should return False
 '''
-# Author: Elias Rodkey
-# Created: 2024-17-10
-# Version: 0.1.0
-# License: MIT
 
+# Add current directory to path
+import sys
+sys.path.insert(0, '.')
 
 # Standard library imports
 import os
@@ -27,7 +26,7 @@ import sqlite3
 import pytest
 
 # local imports
-from src.local_db_handler.utils import check_db_exists, is_db_file
+from local_db_handler.utils import check_db_exists, is_db_file
 
 
 # Constants

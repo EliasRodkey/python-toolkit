@@ -21,10 +21,10 @@ Funciton:
     - test_delete_db: attempts to delete a db file that does exist
     - test_delete_db_multiple: attempts to delete a db file that has multiple copies under one directory
 '''
-# Author: Elias Rodkey
-# Created: 2024-17-11
-# Version: 0.2.0
-# License: MIT
+
+# Add current directory to path
+import sys
+sys.path.insert(0, '.')
 
 
 # Standard library imports
@@ -35,7 +35,7 @@ import random
 import pytest
 
 # local imports
-from src.local_db_handler.database_file import DatabaseFile
+from local_db_handler.database_file import DatabaseFile
 
 
 # Constants

@@ -8,10 +8,6 @@ Funcitons:
     - check_db_exists: checks a given database url / path to see if it has already been created
     - is_db_file: checks a string to see if it is a valid db filename
 '''
-# Author: Elias Rodkey
-# Created: 2024-17-10
-# Version: 0.2.0
-# License: MIT
 
 # Standard library imports
 import logging
@@ -19,6 +15,7 @@ import os
 
 # Initiate module logger
 logger_utils = logging.getLogger(__name__)
+
 
 # Functions
 def check_db_exists(db_filename:str, db_dir:str) -> bool:
@@ -44,6 +41,7 @@ def check_db_exists(db_filename:str, db_dir:str) -> bool:
 
     return exists
 
+
 def is_db_file(filename:str) -> bool:
     '''takes a file name (full path or file title) and returns True if is .db'''
     try:
@@ -52,7 +50,8 @@ def is_db_file(filename:str) -> bool:
     except AttributeError as e:
         logger_utils.error(f'{filename} is not a string: {e}')
         return False
-    
+
+
 if __name__ == "__main__":
     print(check_db_exists('test.db'))
     pass

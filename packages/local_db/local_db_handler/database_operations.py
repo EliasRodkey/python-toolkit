@@ -15,11 +15,6 @@ Classes:
     - LocalDB functions:
         - 
 '''
-# Author: Elias Rodkey
-# Created: 2024-17-12
-# Version: 0.2.0
-# License: MIT
-
 
 # Standard library imports
 import logging
