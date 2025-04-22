@@ -59,7 +59,7 @@ common problems and how to fix them
 
 
 # Version History
-- 0.1 
+- 1.0 
     - initial release
 
 
