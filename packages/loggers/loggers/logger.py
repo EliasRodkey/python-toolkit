@@ -204,7 +204,7 @@ class Logger:
     
     
     def add_file_handler(
-            self, handler_name: str,
+            self, handler_name: str = 'main',
             level = logging.INFO, 
             format = ELoggingFormats.FORMAT_BASIC,
             ) -> None:
