@@ -1,6 +1,7 @@
 # Project Title
 Loggers
 
+
 # Description
 Loggers is a modified logging package that is designed to be flexible and modular.
 The package is designed to be used in a generic python project as a way to handle run logs in a
@@ -12,20 +13,18 @@ LogParse: parses log files for errors
 
 PerformanceLogger: tracks program performance (execution time)
 
+
 # Challenges
 - instance versus class attribute management
 - deciding allocation of class versus instance methods
 - test development
+
 
 # Dependencies
 - logging
 - os
 - typing
 
-# Installation
-If you are working on a project that a user needs to install or run locally in a machine like a "POS", you should include the steps required to install your project and also the required dependencies if any.
-
-Provide a step-by-step description of how to get the development environment set and running.
 
 # Logger Usage
 Import Logger class:
@@ -54,14 +53,20 @@ Clear log files
 logger.clear_todays_logs()
 logger.clear_all_logs()
 
+
 # Help
 common problems and how to fix them
+
 
 # Version History
 - 0.1 
     - initial release
 
+
 # Future Releases
+    - include LogParse class
+    - include PerformanceLogger class
+
 
 # License
 This project is licensed under the MIT License - see the LICENSE.md file for details
