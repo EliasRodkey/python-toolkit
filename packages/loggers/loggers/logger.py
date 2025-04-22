@@ -6,6 +6,8 @@ Class:
 """
 import logging
 import os
+import shutil
+from typing import Dict
 
 from loggers.utils import ELoggingFormats, create_datestamp, compose_global_run_id
 
@@ -18,13 +20,14 @@ class Logger:
     """
 
     # Initialize instances dictionary
-    _instances = {}
+    _instances: Dict = {}
     LOG_FILE_DEFAULT_DIRECTORY: str = 'data\\logs'
 
     # Adds logging levels to Logger class so logging library doesn't have to imported every time Logger class is imported
     DEBUG = logging.DEBUG
     INFO = logging.INFO
-    WARN = logging.WARN
+    WARNING = logging.WARNING
+    WARN = logging.WARNING
     ERROR = logging.ERROR
     CRITICAL = logging.CRITICAL
 
@@ -59,8 +62,12 @@ class Logger:
         # Retrieves or creates a names logger instance
         instance.logger = logging.getLogger(name)
 
-        # Add global run ID to the first logger created to be shared by all runs
-        if cls._instances == {}:
+        # sets minumum logging level for initialization
+        instance.logger.setLevel(logging.DEBUG)
+
+        # TODO: make the run name optional so it can be set at the top level and not set after the first instace is created
+        # Set the global run ID only once
+        if not hasattr(cls, '_run_id'):
             cls._run_id = compose_global_run_id(run_name)
 
         cls._instances[name] = instance
@@ -72,16 +79,24 @@ class Logger:
             run_name: str = '',
             log_file_default_dir: str = LOG_FILE_DEFAULT_DIRECTORY
             ):
-        # Initialize instance level variables
+        """Initializes logger variables if it hasn't been initialized yet"""
+
+        # Check if the instance has already been initialized to avoid re-initialization
+        if hasattr(self, '_initialized') and self._initialized:
+            return
+        
+        # Initialized instance variables
+        self.handlers = {}
         self.name = name
         self.log_file_defaullt_dir = os.path.join(os.path.abspath(os.curdir), log_file_default_dir)
+        self.run_name = run_name
 
         # Create log file directory if it doesn't exist
         if not os.path.exists(self.log_file_defaullt_dir):
             os.makedirs(self.log_file_defaullt_dir)
-
-        # Initialize "handlers" dictionary for joining logger handlers
-        self.handlers = {}
+        
+        # Mark the instance as initialized to avoid re-initialization
+        self._initialized = True
 
 
     @classmethod
@@ -115,6 +130,24 @@ class Logger:
             str
         """
         return cls._run_id
+    
+
+    @classmethod
+    def _del_logger(cls, name: str) -> None:
+        """
+        Deletes a logger instance from the _instances dictionary
+
+        Args:
+            name (str): the name of the logger to be deleted
+        """
+        if name in cls._instances.keys():
+            logger = cls._instances[name]
+
+            # Properly remove and close all handlers
+            for handler in list(logger.logger.handlers):  # Use list() to avoid modifying the list while iterating
+                logger.logger.removeHandler(handler)  # Detach the handler from the logger
+
+            del cls._instances[name]
     
 
     @property
@@ -196,6 +229,7 @@ class Logger:
         # Adds console handler to the handlers dict and the logger
         self.handlers[handler_name] = file_handler
         self.logger.addHandler(file_handler)
+        self.debug(f'File handler {handler_name} added to logger {self.name} with path: {file_path}')
 
 
     def join_handler(self, logger_name: str, handler_name: str) -> None:
@@ -209,12 +243,54 @@ class Logger:
 
         # Retrieve the target handler
         logger_instance = self._get_instances()[logger_name]
-        handler = logger_instance[handler_name]
+        handler = logger_instance.handlers[handler_name]
 
         # Add the handler to the current instance
         self.handlers[handler_name] = handler
         self.logger.addHandler(handler)
 
+    
+    def remove_handler(self, handler_name: str) -> None:
+        """
+        Removes a handler from the current logger instance
+
+        Args:
+            handler_name (str): the name of the handler to be removed
+        """
+
+        # Check if the handler exists in the current instance
+        if self._handler_exists(handler_name):
+            # Remove the handler from the logger and handlers dict
+            self.logger.removeHandler(self.handlers[handler_name])
+            del self.handlers[handler_name]
+        else:
+            self.logger.warning(f'remove_handler error: Handler {handler_name} does not exist in logger {self.name}')
+
+
+    def clear_todays_logs(self) -> None:
+        """
+        Clears all the logs in the current log directory for today
+        """
+        # Check if the directory exists
+        if os.path.exists(self.date_dir):
+            # deletes todays log directory and all files in it
+            shutil.rmtree(self.date_dir)
+
+
+    def clear_all_logs(self) -> None:
+        """
+        Clears all the logs in the current log directory
+        """
+        # Check if the directory exists
+        if os.path.exists(self.log_file_defaullt_dir):
+            # Remove all files in the data/logs directory
+            for directory in os.listdir(self.log_file_defaullt_dir):
+                directory_path = os.path.join(self.log_file_defaullt_dir, directory)
+                if os.path.isdir(directory_path):
+                    shutil.rmtree(directory_path)
+                else:
+                    os.remove(directory_path)
+            
 
     def _create_todays_log_dir(self) -> bool:
         """
@@ -226,13 +302,13 @@ class Logger:
 
         # Create a path to the new log directory
         date_stamp = create_datestamp()
-        date_path = os.path.join(self.log_file_defaullt_dir, date_stamp)
+        self.date_dir = os.path.join(self.log_file_defaullt_dir, date_stamp)
         
         # If the path doesn't exists create the new directory
-        if not os.path.exists(date_path):
-            os.makedirs(date_path)
+        if not os.path.exists(self.date_dir):
+            os.makedirs(self.date_dir)
         
-        return date_path
+        return self.date_dir
     
 
     def _create_run_id_dir(self) -> None:
@@ -245,14 +321,14 @@ class Logger:
 
         # Create a path to the new run ID directory
         date_path = self._create_todays_log_dir()
-        run_dir = os.path.join(date_path, self.run_id)
+        self.run_dir = os.path.join(date_path, self.run_id)
 
         # If the path doesn't exists create the new directory
-        if not os.path.exists(run_dir):
-            os.makedirs(run_dir)
+        if not os.path.exists(self.run_dir):
+            os.makedirs(self.run_dir)
         
-        return run_dir
-
+        return self.run_dir
+    
 
     def _handler_exists(self, handler_name: str) -> bool:
         """
@@ -274,13 +350,96 @@ class Logger:
         return self.handlers.keys()
 
 
+    def debug(self, message: str) -> None:
+        """
+        Logs a debug message
+
+        Args:
+            message (str): the message to be logged
+        """
+        self.logger.debug(message)
+
+
+    def info(self, message: str) -> None:
+        """
+        Logs a info message
+
+        Args:
+            message (str): the message to be logged
+        """
+        self.logger.info(message)
+
+
+    def warn(self, message: str) -> None:
+        """
+        Logs a warning message
+
+        Args:
+            message (str): the message to be logged
+        """
+        self.logger.warning(message)
+
+
+    def warning(self, message: str) -> None:
+        """
+        Logs a warning message
+
+        Args:
+            message (str): the message to be logged
+        """
+        self.logger.warning(message)
+
+
+    def error(self, message: str) -> None:
+        """
+        Logs a error message
+
+        Args:
+            message (str): the message to be logged
+        """
+        self.logger.error(message)
+    
+
+    def critical(self, message: str) -> None:
+        """
+        Logs a ctritical message
+
+        Args:
+            message (str): the message to be logged
+        """
+        self.logger.critical(message)
+
+
 if __name__ == "__main__":
 
-    test_instance = Logger("test", level = logging.DEBUG)
-    main_instance = Logger("main", logging_format=ELoggingFormats.FORMAT_LOGGER_NAME_BRACKETS)
+    test_logger = Logger("test")
+    main_logger = Logger("main")
 
-    test_logger = test_instance.get_logger()
-    main_logger = main_instance.get_logger()
+    # test file handler functions
+    test_logger.add_file_handler('file_1', level=logging.DEBUG)
+    main_logger.add_file_handler('file_1', level=logging.DEBUG)
 
-    test_logger.debug('this is the test logger')
-    main_logger.info('this is the main logger')
+    log_file_path = os.path.join(test_logger.run_dir, f'{test_logger.run_id}_file_1.log')
+
+    test_logger.debug('debug message')
+    test_logger.info('info message')
+    test_logger.warning('warning message')
+
+    with open(log_file_path, "r") as log_file:
+            logs = log_file.read()
+            print(logs)
+
+    test_logger.remove_handler('file_1')
+
+    test_logger.debug('debug message')
+    test_logger.info('info message')
+    test_logger.warning('warning message')
+
+    with open(log_file_path, "r") as log_file:
+            logs = log_file.read()
+            print(logs)
+
+    main_logger.debug(Logger._instances)
+    Logger._del_logger("test")
+    main_logger.debug(Logger._instances)
+    
