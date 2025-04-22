@@ -9,7 +9,7 @@ import os
 import shutil
 from typing import Dict
 
-from loggers.utils import ELoggingFormats, create_datestamp, compose_global_run_id
+from loggers.utils import ELoggingFormats, create_datestamp, create_log_datetime_stamp, compose_global_run_id
 
 
 
@@ -34,7 +34,6 @@ class Logger:
 
     def __new__(
             cls, name: str,
-            run_name: str = '',
             log_file_default_dir: str = LOG_FILE_DEFAULT_DIRECTORY,
             ):
         """
@@ -68,7 +67,7 @@ class Logger:
         # TODO: make the run name optional so it can be set at the top level and not set after the first instace is created
         # Set the global run ID only once
         if not hasattr(cls, '_run_id'):
-            cls._run_id = compose_global_run_id(run_name)
+            cls._run_id = create_log_datetime_stamp()
 
         cls._instances[name] = instance
         return instance
@@ -76,7 +75,6 @@ class Logger:
 
     def __init__(
             self, name: str,
-            run_name: str = '',
             log_file_default_dir: str = LOG_FILE_DEFAULT_DIRECTORY
             ):
         """Initializes logger variables if it hasn't been initialized yet"""
@@ -89,7 +87,6 @@ class Logger:
         self.handlers = {}
         self.name = name
         self.log_file_defaullt_dir = os.path.join(os.path.abspath(os.curdir), log_file_default_dir)
-        self.run_name = run_name
 
         # Create log file directory if it doesn't exist
         if not os.path.exists(self.log_file_defaullt_dir):
@@ -97,6 +94,17 @@ class Logger:
         
         # Mark the instance as initialized to avoid re-initialization
         self._initialized = True
+
+
+    @classmethod
+    def set_run_name(cls, run_name: str) -> None:
+        """
+        Sets the run name for the Logger class
+
+        Args:
+            run_name (str): a name to help identify the run (configuration details or unique parameters)
+        """
+        cls._run_id = compose_global_run_id(run_name)
 
 
     @classmethod
