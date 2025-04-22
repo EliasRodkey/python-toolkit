@@ -6,11 +6,9 @@ Unit tests for logger.py using pytest.
 import sys
 sys.path.insert(0, '.')
 
-from io import StringIO
 import pytest
 import time
 import os
-from unittest.mock import patch
 
 from loggers.logger import Logger
 from loggers.utils import ELoggingFormats as ELF

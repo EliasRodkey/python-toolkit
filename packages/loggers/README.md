@@ -1,32 +1,58 @@
 # Project Title
-Super Logging
+Loggers
 
 # Description
-Super Logging is a modified logging package that is designed to be flexible and modular.
+Loggers is a modified logging package that is designed to be flexible and modular.
 The package is designed to be used in a generic python project as a way to handle run logs in a
 sophisticated and organized way.
 
-# Examples
+Logger: creates and manages logging instances and handlers at a high level
 
-# Future Releases
+LogParse: parses log files for errors
+
+PerformanceLogger: tracks program performance (execution time)
 
 # Challenges
-Prominent technical challenges
+- instance versus class attribute management
+- deciding allocation of class versus instance methods
+- test development
 
 # Dependencies
-Any packages the project needs to run
+- logging
+- os
+- typing
 
 # Installation
 If you are working on a project that a user needs to install or run locally in a machine like a "POS", you should include the steps required to install your project and also the required dependencies if any.
 
 Provide a step-by-step description of how to get the development environment set and running.
 
-# Usage
-Provide instructions and examples so users/contributors can use the project. This will make it easy for them in case they encounter a problem – they will always have a place to reference what is expected.
+# Logger Usage
+Import Logger class:
+from loggers import Logger
 
-You can also make use of visual aids by including materials like screenshots to show examples of the running project and also the structure and design principles used in your project.
+Set the overall run name at the top level of your program:
+Logger.set_run_name(run_name)
 
-Also if your project will require authentication like passwords or usernames, this is a good section to include the credentials.
+Create Logger instane:
+logger = Logger(logger_name)
+
+Add join or remove handlers:
+logger.add_console_handler(handler_name)
+logger.add_file_handler(handler_name: str = 'main')
+logger.join_handler(other_logger_name, handler_name)
+logger.remove_hanler(handler_name)
+
+Use logger as normal
+logger.debug(message)
+logger.info(message)
+logger.warning(message)
+logger.error(message)
+logger.critical(message)
+
+Clear log files
+logger.clear_todays_logs()
+logger.clear_all_logs()
 
 # Help
 common problems and how to fix them
@@ -35,12 +61,7 @@ common problems and how to fix them
 - 0.1 
     - initial release
 
-# Authors
-If you worked on the project as a team or an organization, list your collaborators/team members. You should also include links to their GitHub profiles and social media too.
-
-Also, if you followed tutorials or referenced a certain material that might help the user to build that particular project, include links to those here as well.
-
-This is just a way to show your appreciation and also to help others get a first hand copy of the project.
+# Future Releases
 
 # License
 This project is licensed under the MIT License - see the LICENSE.md file for details
