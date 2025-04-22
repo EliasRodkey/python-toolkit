@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel", "logging", "shutil", "os", "typing"]
+requires = ["setuptools", "wheel", "logging"]
 build-backend = "setuptools.build_meta"
 
 [project]
