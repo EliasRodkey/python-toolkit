@@ -9,25 +9,26 @@ Funcitons:
     - create_session: creates and returns a SQLalchemy Session class object
 '''
 
-#Standard library imports
-import logging
+# Initiate module logger
+from . import Logger, ELF
 
 # Third-Party library imports
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-logger_db_connections = logging.getLogger(__name__)
+_logger = Logger('local_db_connections')
+_logger.add_file_handler(format=ELF.FORMAT_LOGGER_NAME)
 
 # Functions
 def create_engine_conn(rel_db_url:str):
     '''Create and returns an SQLalchemy engine from a given db URL string'''
-    logger_db_connections.info(f'creating connection engine to {rel_db_url}...')
+    _logger.info(f'creating connection engine to {rel_db_url}...')
 
     return create_engine(f'sqlite:///{rel_db_url}')
 
 def create_session(engine):
     '''Create and return a SQLalchemy session'''
-    logger_db_connections.info(f'creating session for {engine}...')
+    _logger.info(f'creating session for {engine}...')
     
     Session = sessionmaker(bind=engine)
     return Session()

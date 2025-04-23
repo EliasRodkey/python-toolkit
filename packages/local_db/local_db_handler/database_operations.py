@@ -16,8 +16,8 @@ Classes:
         - 
 '''
 
-# Standard library imports
-import logging
+# Initiate module logger
+from . import Logger, ELF
 
 # Third-Party library imports
 # import pandas as pd
@@ -29,7 +29,8 @@ from .utils import check_db_exists, is_db_file
 
 
 # Initialize module logger
-logger_local_db = logging.getLogger(__name__)
+_logger = Logger('local_db')
+_logger.add_file_handler(format=ELF.FORMAT_LOGGER_NAME)
 
 
 class LocalDB():

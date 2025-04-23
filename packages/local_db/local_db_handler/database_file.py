@@ -21,7 +21,6 @@ Class:
 '''
 
 # Standard library imports
-import logging
 import sqlite3
 from dataclasses import dataclass, field
 
@@ -29,11 +28,12 @@ from dataclasses import dataclass, field
 # import pandas as pd
 
 # local imports
+from . import Logger, ELF
 from .utils import os, check_db_exists
 
-
 # Initialize module logger
-logger_database_file = logging.getLogger(__name__)
+_logger = Logger('local_db_file')
+_logger.add_file_handler(format=ELF.FORMAT_LOGGER_NAME)
 
 # Constants
 DEFAULT_DB_DIR = os.path.join(os.curdir, 'data')
@@ -56,23 +56,23 @@ class DatabaseFile():
     
     def create(self):
         '''creates a new database file in a given directory, default .\\data. returns path(s) of file as a list'''
-        logger_database_file.info(f'creating database file {self.name}...')
+        _logger.info(f'creating database file {self.name}...')
         if self.exists():
-            logger_database_file.info(f'{self.name} already exists in {self.directory}')
+            _logger.info(f'{self.name} already exists in {self.directory}')
         else:
             sqlite3.connect(self.path).close()
-            logger_database_file.info(f'database file {self.name} created.')
-            logger_database_file.debug(f'new db file path: {self.path}')
+            _logger.info(f'database file {self.name} created.')
+            _logger.debug(f'DatabaseFile.create() -> new db file path: {self.path}')
 
     def move(self, target_directory: str) -> None:
         '''moves a DatabaseFile object to a new directory'''
-        logger_database_file.info(f'moving {self.name} from {self.directory} to {target_directory}...')
+        _logger.info(f'moving {self.name} from {self.directory} to {target_directory}...')
 
         # Check if db with that filename already exists in target dir. return False, not moved
         target_exists = check_db_exists(self.name, target_directory)
         if target_exists:
             # Does nothing if it already exists
-            logger_database_file.error(f'{self.name} already exists in {target_directory}.')
+            _logger.error(f'DatabaseFile.move() -> {self.name} already exists in {target_directory}.')
         elif self.exists():
             # Moves to new directory if it doesn't exist and the current file exists
             new_path = os.path.join(target_directory, self.name)
@@ -81,13 +81,13 @@ class DatabaseFile():
             self.abspath = os.path.abspath(self.path)
             self.directory = target_directory
         else:
-            logger_database_file.error(f'{self.name} cannot be moved because it doesn\'t exist in {self.directory}')
+            _logger.error(f'DatabaseFile.move() -> {self.name} cannot be moved because it doesn\'t exist in {self.directory}')
             
 
     def delete(self):
         '''deletes the file managed by the DatabaseFile instance'''
         os.remove(self.abspath)
-        logger_database_file.info(f'{self.name} deleted from {self.directory}...')
+        _logger.info(f'{self.name} deleted from {self.directory}...')
 
 
 if __name__ == "__main__":
