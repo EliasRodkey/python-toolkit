@@ -35,8 +35,11 @@ from .utils import os, check_db_exists
 _logger = Logger('local_db_file')
 _logger.add_file_handler(format=ELF.FORMAT_LOGGER_NAME)
 
+
 # Constants
 DEFAULT_DB_DIR = os.path.join(os.curdir, 'data')
+
+
 
 @dataclass
 class DatabaseFile():
@@ -50,12 +53,14 @@ class DatabaseFile():
         self.path = os.path.join(self.directory, self.name)
         self.abspath = os.path.abspath(self.path)
 
+
     def exists(self) -> bool:
         '''checks the if the database name exists in the given directiry''' 
         return check_db_exists(self.name, self.directory)
     
+
     def create(self):
-        '''creates a new database file in a given directory, default .\\data. returns path(s) of file as a list'''
+        '''creates a new database file in a given directory, default .\\data.'''
         _logger.info(f'creating database file {self.name}...')
         if self.exists():
             _logger.info(f'{self.name} already exists in {self.directory}')
@@ -63,6 +68,7 @@ class DatabaseFile():
             sqlite3.connect(self.path).close()
             _logger.info(f'database file {self.name} created.')
             _logger.debug(f'DatabaseFile.create() -> new db file path: {self.path}')
+
 
     def move(self, target_directory: str) -> None:
         '''moves a DatabaseFile object to a new directory'''

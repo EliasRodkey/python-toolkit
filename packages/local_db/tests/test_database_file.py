@@ -47,6 +47,7 @@ TEST_DB_ABS_DIR = os.path.abspath(TEST_DB_DIR)
 TEST_DB_ABS_PATH = os.path.abspath(TEST_DB_PATH)
 
 
+
 # Reused Funcitons
 def get_random_dir() -> str:
     '''Gets a random directory from the cwd that is not called \'data\''''
@@ -60,6 +61,7 @@ def get_random_dir() -> str:
     # Return relative path to random directory choice
     return os.path.join(cwd, random.choice(directories))
 
+
 def get_two_distinct_dir() -> tuple:
     '''Gets two distinct random directories from the cwd'''
     # Get random directories
@@ -69,6 +71,8 @@ def get_two_distinct_dir() -> tuple:
         dir_1, dir_2 = (get_random_dir(), get_random_dir())
 
     return dir_1, dir_2
+
+
 # Functions
 # Pytest parameters for create db file test
 @pytest.mark.parametrize('db_dir', [
@@ -79,7 +83,7 @@ def get_two_distinct_dir() -> tuple:
 ])
 
 def test_create_database(db_dir:str):
-    '''Tests the DatabaseFile.create() function from db_file_handler by creating an new db file in the default db location and checking if it exists'''
+    '''Tests the DatabaseFile.create() function from database_file by creating an new db file in the default db location and checking if it exists'''
     # Create db file in default location
     test_db = DatabaseFile(TEST_DB, db_dir)
     test_db.create()
@@ -97,8 +101,8 @@ def test_create_database(db_dir:str):
     (get_two_distinct_dir()),
 ])
 
-def test_create_database(db_dir_1:str, db_dir_2:str):
-    '''Tests the DatabaseFile.create() function from db_file_handler by creating an new db file in the default db location and checking if it exists'''
+def test_move_database(db_dir_1:str, db_dir_2:str):
+    '''Tests the DatabaseFile.move() function from database_file by moving a db file from one location to another'''
     # Create db file in default location
     test_db = DatabaseFile(TEST_DB, db_dir_1)
     test_db.create()
@@ -112,6 +116,7 @@ def test_create_database(db_dir_1:str, db_dir_2:str):
     os.remove(os.path.join(db_dir_2, TEST_DB))
     assert not os.path.exists(test_db.abspath)
 
+
 # def test_move_db_default():
 #     '''Tests the move_db() function from db_file_handler by moving a file from the cwd to the .\\data dir'''
 #     # Create db file in the cwd location
@@ -124,6 +129,7 @@ def test_create_database(db_dir_1:str, db_dir_2:str):
 #     # Delete db file
 #     deleted = delete_db(TEST_DB)
 #     assert deleted[0] == DEFAULT_TEST_DB_PATH
+
 
 # def test_move_db_custom_1():
 #     '''Tests the move_db() function from db_file_handler by moving a file from the cwd to the a custom dir'''
@@ -141,6 +147,7 @@ def test_create_database(db_dir_1:str, db_dir_2:str):
 #     deleted = delete_db(TEST_DB, db_dir=rand_target_dir)
 #     assert deleted[0] == os.path.join(rand_target_dir, TEST_DB)
 
+
 # def test_move_db_custom_2():
 #     '''Tests the move_db() function from db_file_handler by moving a file from a custom dir to the .\\data dir'''
 #     # Get a random directory from the project folder
@@ -156,6 +163,7 @@ def test_create_database(db_dir_1:str, db_dir_2:str):
 #     # Delete db file
 #     deleted = delete_db(TEST_DB)
 #     assert deleted[0] == DEFAULT_TEST_DB_PATH
+
 
 # def test_move_db_custom_3():
 #     '''Tests the move_db() function from db_file_handler by moving a file from a custom dir to a custom dir'''
@@ -179,11 +187,13 @@ def test_create_database(db_dir_1:str, db_dir_2:str):
 #     deleted = delete_db(TEST_DB, db_dir=rand_target_dir)
 #     assert deleted[0] == os.path.join(rand_target_dir, TEST_DB)
 
+
 # def test_move_db_not_exist():
 #     '''Tests the move_db() function from db_file_handler trying to move a db file that doesn't exist'''
 #     # Try move db to the default db file location
 #     moved = move_db(FAKE_DB)
 #     assert not moved
+
 
 # def test_move_db_target_exist():
 #     '''Tests the move_db() function from db_file_handler trying to move a db file to a dir where it already exists'''
@@ -205,11 +215,13 @@ def test_create_database(db_dir_1:str, db_dir_2:str):
 #     deleted = delete_db(FAKE_DB)
 #     assert len(deleted) == 0
 
+
 # def test_delete_db():
 #     '''Tests the delete_db() function from db_file_handler by trying to delete a file that doesn't exist'''
 #     create_db(TEST_DB)
 #     deleted = delete_db(TEST_DB)
 #     assert deleted[0] == DEFAULT_TEST_DB_PATH
+
 
 # def test_delete_db_multiple():
 #     '''Tests the delete_db() function from db_file_handler by trying to delete a file that doesn't exist'''
