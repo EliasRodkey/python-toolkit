@@ -21,7 +21,7 @@ import pytest
 from sqlalchemy.exc import OperationalError
 
 # local imports
-from local_db_handler.db_connections import create_engine_conn, create_session
+from local_db.database_connections import create_engine_conn, create_session
 
 
 # Constants

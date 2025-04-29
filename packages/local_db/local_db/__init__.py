@@ -22,8 +22,10 @@ from loggers import ELoggingFormats as ELF
 DEFAULT_DB_DIRECTORY = 'data\\dbs'
 
 # Imports modules, functions, and classes for clean package interface
-from .db_connections import create_engine, create_session
+from .base_table import BaseTable
+from .database_connections import create_engine_conn, create_session
 from .database_file import DatabaseFile
+from .database_manager import DatabaseManager
 from .utils import check_db_exists, is_db_file
 
 # Defines importable functions for package
@@ -33,5 +35,7 @@ __all__ = [
     'create_engine_conn',
     'create_session',
     'DatabaseFile',
-    'LOGGERS'
+    'DatabaseManager',
+    'BaseTable',
+    'Base'
 ]

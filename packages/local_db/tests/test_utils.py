@@ -26,7 +26,7 @@ import sqlite3
 import pytest
 
 # local imports
-from local_db_handler.utils import check_db_exists, is_db_file
+from local_db.utils import check_db_exists, is_db_file
 
 
 # Constants
