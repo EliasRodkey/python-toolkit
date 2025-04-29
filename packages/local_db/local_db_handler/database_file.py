@@ -103,8 +103,11 @@ class DatabaseFile():
 
     def delete(self):
         '''deletes the file managed by the DatabaseFile instance'''
-        os.remove(self.abspath)
-        _logger.info(f'{self.name} deleted from {self.directory}...')
+        if os.path.exists(self.abspath):
+            os.remove(self.abspath)
+            _logger.info(f'{self.name} deleted from {self.directory}...')
+        else:
+            _logger.error(f'DatabaseFile.delete() -> {self.name} does not exist in {self.directory}. Cannot delete.')
 
 
 if __name__ == "__main__":

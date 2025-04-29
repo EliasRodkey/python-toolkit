@@ -8,7 +8,7 @@ Funciton:
     create():
     - test_create_database: attempts to create a db file in a directory from a relative path
 
-    move_db()
+    DatabaseFile.move()
     - test_move_db_default: attempt to move a db file from a default location (cwd) to a default location (.\\data) 
     - test_move_db_custom_1: attempt to move a db file from a default location to a custom location (.\\data)
     - test_move_db_custom_2: attempt to move a db file from a custom location (cwd) to a default location (.\\data)
@@ -45,145 +45,111 @@ TEST_DB = 'test.db'
 FAKE_DB = 'fake.db'
 
 
-# Functions
-def test_create_database_default():
-    '''Tests the DatabaseFile.create() function from database_file by creating an new db file in the default db location and checking if it exists'''
-    # Create db file in default location
-    test_db = DatabaseFile(TEST_DB)
-    test_db.create()
-    assert os.path.exists(test_db.abspath)
+class TestDatabaseFile:
+    # Functions
+    def test_create_database_default(self):
+        '''Tests the DatabaseFile.create() function from database_file by creating an new db file in the default db location and checking if it exists'''
+        # Create db file in default location
+        test_db = DatabaseFile(TEST_DB)
+        test_db.create()
+        assert os.path.exists(test_db.abspath)
 
-    # Delete db file
-    os.remove(os.path.abspath(os.path.join(DEFAULT_DB_DIRECTORY, TEST_DB)))
-    assert not os.path.exists(test_db.abspath)
-
-
-def test_move_database():
-    '''Tests the DatabaseFile.move() function from database_file by moving a db file from one location to another'''
-    # Create db file in default location
-    test_db = DatabaseFile(TEST_DB)
-    test_db.create()
-
-    # Move the database file to a new location
-    new_db_dir = '.\\data'
-    test_db.move(new_db_dir)
-    assert test_db.directory == new_db_dir
-    assert os.path.exists(test_db.abspath)
-
-    # Delete db file
-    os.remove(os.path.join(new_db_dir, TEST_DB))
-    assert not os.path.exists(test_db.abspath)
+        # Delete db file
+        os.remove(os.path.abspath(os.path.join(DEFAULT_DB_DIRECTORY, TEST_DB)))
+        assert not os.path.exists(test_db.abspath)
 
 
-# def test_move_db_default():
-#     '''Tests the move_db() function from db_file_handler by moving a file from the cwd to the .\\data dir'''
-#     # Create db file in the cwd location
-#     create_db(TEST_DB, db_dir=os.curdir)
+    def test_delete_database(self):
+        '''Tests the DatabaseFile.delete() function from database_file by deleting a db file in the default db location'''
+        # Create db file in default location
+        test_db = DatabaseFile(TEST_DB)
+        test_db.create()
 
-#     # Move db to the default db file location
-#     moved = move_db(TEST_DB)
-#     assert moved
-
-#     # Delete db file
-#     deleted = delete_db(TEST_DB)
-#     assert deleted[0] == DEFAULT_TEST_DB_PATH
+        # Delete db file
+        test_db.delete()
+        assert not os.path.exists(test_db.abspath)
 
 
-# def test_move_db_custom_1():
-#     '''Tests the move_db() function from db_file_handler by moving a file from the cwd to the a custom dir'''
-#     # Get a random directory from the project folder
-#     rand_target_dir = get_random_dir()
+    def test_move_database_default(self):
+        '''Tests the DatabaseFile.move() function from database_file by moving a db file from one location to another'''
+        # Create db file in default location
+        test_db = DatabaseFile(TEST_DB)
+        test_db.create()
 
-#     # Create a db file in the cwd
-#     create_db(TEST_DB, db_dir=os.curdir)
+        # Move the database file to a new location
+        new_db_dir = '.\\data'
+        test_db.move(new_db_dir)
+        assert test_db.directory == new_db_dir
+        assert os.path.exists(test_db.abspath)
 
-#     # Move db file to the rand dir
-#     moved = move_db(TEST_DB, target_db_dir=rand_target_dir)
-#     assert moved
-
-#     # Delete db file
-#     deleted = delete_db(TEST_DB, db_dir=rand_target_dir)
-#     assert deleted[0] == os.path.join(rand_target_dir, TEST_DB)
-
-
-# def test_move_db_custom_2():
-#     '''Tests the move_db() function from db_file_handler by moving a file from a custom dir to the .\\data dir'''
-#     # Get a random directory from the project folder
-#     rand_src_dir = get_random_dir()
-
-#     # Create a db file in the random dir
-#     create_db(TEST_DB, db_dir=rand_src_dir)
-
-#     # Move the db file to the default dir
-#     moved = move_db(TEST_DB, db_dir=rand_src_dir)
-#     assert moved
-
-#     # Delete db file
-#     deleted = delete_db(TEST_DB)
-#     assert deleted[0] == DEFAULT_TEST_DB_PATH
+        # Delete db file
+        test_db.delete()
+        assert not os.path.exists(test_db.abspath)
 
 
-# def test_move_db_custom_3():
-#     '''Tests the move_db() function from db_file_handler by moving a file from a custom dir to a custom dir'''
-#     # Get a random source and target directory from the project folder
-#     cwd = os.getcwd()
-#     directories = [d for d in os.listdir() if os.path.isdir(os.path.join(cwd, d))]
-#     rand_src_dir = random.choice(directories)
-#     rand_target_dir = random.choice(directories)
-#     while rand_src_dir == rand_target_dir:
-#         rand_src_dir = random.choice(directories)
-#         rand_target_dir = random.choice(directories)
+    def test_move_database_custom_1(self):
+        '''Tests the DatabaseFile.move() function from db_file_handler by moving a file from the cwd to the .\\data\\dbs dir'''
+        # Create db file in the cwd location
+        test_db = DatabaseFile(TEST_DB, directory=os.curdir)
+        test_db.create()
 
-#     # Create a db file in the random source dir
-#     create_db(TEST_DB, db_dir=rand_src_dir)
+        # Move db to the default db file location
+        test_db.move(DEFAULT_DB_DIRECTORY)
+        assert test_db.directory == DEFAULT_DB_DIRECTORY
+        assert os.path.exists(test_db.abspath) 
 
-#     # Move db file from random source db to random target db
-#     moved = move_db(TEST_DB, db_dir=rand_src_dir, target_db_dir=rand_target_dir)
-#     assert moved
-
-#     # Delete db file
-#     deleted = delete_db(TEST_DB, db_dir=rand_target_dir)
-#     assert deleted[0] == os.path.join(rand_target_dir, TEST_DB)
+        # Delete db file
+        test_db.delete
+        assert os.path.exists(test_db.abspath)
 
 
-# def test_move_db_not_exist():
-#     '''Tests the move_db() function from db_file_handler trying to move a db file that doesn't exist'''
-#     # Try move db to the default db file location
-#     moved = move_db(FAKE_DB)
-#     assert not moved
+    def test_move_db_custom_2(self):
+        '''Tests the DatabaseFile.move() function from db_file_handler by moving a file from the cwd to the a custom dir'''
+        # Get a random directory from the project folder
+        test_db = DatabaseFile(TEST_DB, directory=os.curdir)
+        test_db.create()
+
+        assert test_db.directory == os.curdir
+        assert os.path.exists(test_db.abspath) 
+
+        # Move db to a custom directory
+        db_dir = 'data'
+        test_db.move(db_dir)
+
+        assert test_db.directory == db_dir
+        assert os.path.exists(test_db.abspath) 
+
+        # Delete db file
+        test_db.delete()
+        assert not os.path.exists(test_db.abspath)
 
 
-# def test_move_db_target_exist():
-#     '''Tests the move_db() function from db_file_handler trying to move a db file to a dir where it already exists'''
-#     # Create a db file in cwd and in the .\data folder
-#     create_db(TEST_DB)
-#     create_db(TEST_DB, db_dir=CUSTOM_TEST_DB_DIR)
+    def test_move_db_target_exist(self):
+        '''Tests the DatabaseFile.move() function from db_file_handler trying to move a db file to a dir where it already exists'''
+        # Create a db file in cwd and in the .\data folder
+        test_db = DatabaseFile(TEST_DB)
+        test_db.create()
 
-#     # Try move db to the default db file location
-#     moved = move_db(TEST_DB, db_dir=CUSTOM_TEST_DB_DIR)
-#     assert not moved
+        # Capture original file information
+        directory = test_db.directory
+        file_path = test_db.file_path
+        abspath = test_db.abspath
 
-#     # Delete db files
-#     deleted = delete_db(TEST_DB, delete_multiple=True)
-#     assert deleted == [DEFAULT_TEST_DB_PATH, CUSTOM_TEST_DB_PATH]
+        # Try move db to the default db file location
+        test_db.move(DEFAULT_DB_DIRECTORY)
+        assert directory == test_db.directory
+        assert file_path == test_db.file_path
+        assert abspath == test_db.abspath
+        assert os.path.exists(test_db.abspath)
 
-
-# def test_delete_db_not_exist():
-#     '''Tests the delete_db() function from db_file_handler by trying to delete a file that doesn't exist'''
-#     deleted = delete_db(FAKE_DB)
-#     assert len(deleted) == 0
-
-
-# def test_delete_db():
-#     '''Tests the delete_db() function from db_file_handler by trying to delete a file that doesn't exist'''
-#     create_db(TEST_DB)
-#     deleted = delete_db(TEST_DB)
-#     assert deleted[0] == DEFAULT_TEST_DB_PATH
+        # Delete db files
+        test_db.delete()
+        assert not os.path.exists(test_db.abspath)
 
 
-# def test_delete_db_multiple():
-#     '''Tests the delete_db() function from db_file_handler by trying to delete a file that doesn't exist'''
-#     create_db(TEST_DB)
-#     create_db(TEST_DB, db_dir=CUSTOM_TEST_DB_DIR)
-#     deleted = delete_db(TEST_DB, delete_multiple=True)
-#     assert deleted == [DEFAULT_TEST_DB_PATH, CUSTOM_TEST_DB_PATH]
+    def test_delete_db_not_exist(self):
+        '''Tests the DatabaseFile.delete() function from db_file_handler by trying to delete a file that hasn't been created yet'''
+        test_db = DatabaseFile(FAKE_DB)
+        
+        test_db.delete()
+        assert not os.path.exists(test_db.abspath)
