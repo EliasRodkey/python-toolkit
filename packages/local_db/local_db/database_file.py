@@ -22,10 +22,6 @@ Class:
 
 # Standard library imports
 import sqlite3
-from dataclasses import dataclass, field
-
-# Third-Party library imports
-# import pandas as pd
 
 # local imports
 from . import Logger, ELF, DEFAULT_DB_DIRECTORY

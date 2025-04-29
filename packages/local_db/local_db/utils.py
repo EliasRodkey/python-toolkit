@@ -11,7 +11,6 @@ Funcitons:
 
 # Standard library imports
 import os
-from enum import Enum
 import pandas as pd
 from sqlalchemy import Integer, Float, String, Boolean, DateTime, LargeBinary
 

@@ -22,6 +22,7 @@ from . import Logger, ELF
 # Third-Party library imports
 import pandas as pd
 from typing import List
+import sqlalchemy
 
 # local imports
 from local_db.database_connections import create_engine_conn, create_session
@@ -72,13 +73,20 @@ class DatabaseManager():
             # Create a new instance of the database object class with the provided attributes
             new_item = self.table_class(**kwargs)
 
-            # Add the new item to the session and commit the changes to the database
-            self.session.add(new_item)
-        
-            # Commit the changes to the database
-            self.session.commit()
+            try:
+                # Add the new item to the session and commit the changes to the database
+                self.session.add(new_item)
+                self.session.flush() # Detects if the item already exists in the database
 
-            _logger.info(f'Item added to database: {self.table_class.__tablename__} with attributes: {kwargs}')
+            except sqlalchemy.exc.IntegrityError as e:
+                # Handle the IntegrityError if the item already exists in the database
+                self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
+                _logger.error(f'DatbaseManager.add_item() -> Item already exists in database: {self.table_class.__tablename__} with attributes: {kwargs}')
+                raise e
+            
+            finally:
+                self.session.commit() # Commit the changes to the database
+                _logger.info(f'Item added to database: {self.table_class.__tablename__} with attributes: {kwargs}')
     
 
     def add_multiple_items(self, entries: List[dict]):
@@ -104,7 +112,7 @@ class DatabaseManager():
         Args:
             df (pd.DataFrame): The DataFrame to be appended to the database table.
         '''
-
+        # TODO: Add exception catch for integrity errors
         # Check to make sure the dataframe columns match the database table columns
         if self._df_compatible(df):
 
@@ -124,6 +132,7 @@ class DatabaseManager():
         Returns:
             list: A list of all items in the database table.
         '''
+        _logger.debug(f'DatabaseManager.fetch_all_items() -> Fetching all items from database: {self.table_class.__tablename__}')
         return self.session.query(self.table_class).all()
     
 
@@ -143,8 +152,10 @@ class DatabaseManager():
 
         # If the item exists, return it; otherwise, return None
         if item:
+            _logger.debug(f'DatabaseManager.fetch_item_by_id() -> Item found in database: {self.table_class.__tablename__} with ID: {item_id}')
             return item
         else:
+            _logger.debug(f'DatabaseManager.fetch_item_by_id() -> Item not found in database: {self.table_class.__tablename__} with ID: {item_id}')
             return None
     
 
@@ -164,9 +175,11 @@ class DatabaseManager():
 
         if query:
             # If the query returns results, return them as a list
+            _logger.debug(f'DatabaseManager.fetch_items_by_attribute() -> Items found in database: {self.table_class.__tablename__} with attributes: {kwargs}')
             return query.all()
         else:
             # If no results are found, return an empty list
+            _logger.debug(f'DatabaseManager.fetch_items_by_attribute() -> No items found in database: {self.table_class.__tablename__} with attributes: {kwargs}')
             return []
 
     
@@ -179,6 +192,7 @@ class DatabaseManager():
         '''
 
         # Fetch all items from the database and convert them to a DataFrame
+        _logger.debug(f'DatabaseManager.to_dataframe() -> Converting database table to DataFrame: {self.table_class.__tablename__}')
         return pd.read_sql(self.session.query(self.table_class).statement, self.session.bind)
     
 
@@ -199,14 +213,23 @@ class DatabaseManager():
 
             # If the item exists, update its attributes and commit the changes to the database
             if item:
-
                 # Unpack the keyword arguments and update the item's attributes
                 for key, value in kwargs.items():
                     if hasattr(item, key): # Check if the attribute exists in the item
                         setattr(item, key, value)
 
-                # Commit the changes to the database
-                self.session.commit()
+        try:
+            self.session.flush() # Detects if the item already exists in the database
+
+        except sqlalchemy.exc.IntegrityError as e:
+            # Handle the IntegrityError if the item already exists in the database
+            self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
+            _logger.error(f'DatabaseManager.update_item() -> Unable to update item, value already exists in database: {self.table_class.__tablename__} with attributes: {kwargs}')
+            raise e
+        
+        finally:
+            self.session.commit() # Commit the changes to the database
+            _logger.info(f'Item updated in database: {self.table_class.__tablename__} with attributes: {kwargs}')
 
 
     def delete_item(self, item_id):
@@ -224,6 +247,9 @@ class DatabaseManager():
         if item:
             self.session.delete(item)
             self.session.commit()
+            _logger.info(f'Item deleted from database: {self.table_class.__tablename__} with ID: {item_id}')
+        else:
+            _logger.warning(f'DatabaseManager.delete_item() -> Item not found in database: {self.table_class.__tablename__} with ID: {item_id}')
 
 
     def start_session(self):
