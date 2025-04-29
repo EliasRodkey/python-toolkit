@@ -1,25 +1,22 @@
 #!python3
 '''
-tests.db_file_handler_test.py
+tests.test_database_file.py
 
-this module contains tests for functions contained in the db__file_handler.py module
+This module contains tests for the DatabaseFile class from the local_db.database_file module.
 
-Funciton:
-    create():
-    - test_create_database: attempts to create a db file in a directory from a relative path
+Functions:
+    DatabaseFile.create()
+    - test_create_database_default: tests creating a database file in the default directory.
+
+    DatabaseFile.delete()
+    - test_delete_database: tests deleting an existing database file.
+    - test_delete_db_not_exist: tests attempting to delete a database file that does not exist.
 
     DatabaseFile.move()
-    - test_move_db_default: attempt to move a db file from a default location (cwd) to a default location (.\\data) 
-    - test_move_db_custom_1: attempt to move a db file from a default location to a custom location (.\\data)
-    - test_move_db_custom_2: attempt to move a db file from a custom location (cwd) to a default location (.\\data)
-    - test_move_db_custom_3: attempt to move a db file from a custom location to a custom location (.\\data)
-    - test_move_db_not_exist: attempt to move a db file that doesn't exist
-    - test_move_db_target_exist: attempt to move a db file that already exists at target location
-
-    delete_db()
-    - test_delete_db_not_exist: attempts to delete a db file that does not exist
-    - test_delete_db: attempts to delete a db file that does exist
-    - test_delete_db_multiple: attempts to delete a db file that has multiple copies under one directory
+    - test_move_database_default: tests moving a database file to a new default directory.
+    - test_move_database_custom_1: tests moving a database file from the current directory to the default directory.
+    - test_move_db_custom_2: tests moving a database file from the current directory to a custom directory.
+    - test_move_db_target_exist: tests attempting to move a database file to a directory where it already exists.
 '''
 
 # Add current directory to path
@@ -29,10 +26,6 @@ sys.path.insert(0, '.')
 
 # Standard library imports
 import os
-import random
-
-# Third-Party library imports
-import pytest
 
 # local imports
 from local_db import DEFAULT_DB_DIRECTORY

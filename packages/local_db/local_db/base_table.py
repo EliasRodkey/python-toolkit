@@ -16,7 +16,7 @@ from sqlalchemy.orm import declarative_base
 Base = declarative_base()
 
 class BaseTable(Base):
-    __abstract__ = True  # Prevents SQLAlchemy from creating a table for this classz
+    __abstract__ = True  # Prevents SQLAlchemy from creating a table for this class
 
     @classmethod
     def get_column_names(cls):

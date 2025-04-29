@@ -2,21 +2,22 @@
 '''
 tests.utils_test.py
 
-this module contains tests for functions contained in the utils.py module
+This module contains tests for functions contained in the utils.py module.
 
-Funciton:
+Functions:
     check_db_exists():
-    - test_check_db_exists: attempts to check for a database that does exist
-    - test_check_db_not_exists: attempts to check for a database that does not exist
+    - test_check_db_exists: verifies check_db_exists correctly identifies an existing database file.
+    - test_check_db_not_exists: verifies check_db_exists correctly identifies a non-existing database file.
 
     is_db_file():
-    - test_is_db_file_true: checks example db filenames that should return True
-    - test_is_db_file_false: checks examples db filenames that should return False
+    - test_is_db_file_true: verifies is_db_file correctly identifies valid .db filenames.
+    - test_is_db_file_false: verifies is_db_file correctly identifies invalid .db filenames or non-string inputs.
 '''
 
 # Add current directory to path
 import sys
 sys.path.insert(0, '.')
+
 
 # Standard library imports
 import os

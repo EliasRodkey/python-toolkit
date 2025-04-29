@@ -1,23 +1,18 @@
 #!python3
 '''
-tests.db_connections_test.py
+tests.test_db_connections.py
 
-this module contains tests for functions contained in the db_connections.py module
+This module contains tests for functions in the database_connections.py module.
 
-Funciton:
-    - test_create_engine_conn: atempts to create a connection engine object to a local URL
-    - test_create_sesstion:
+Functions:
+    - test_db_conn: Tests the create_engine_conn() function by attempting to create a connection engine object to a local database URL.
 '''
 
 # Add current directory to path
 import sys
 sys.path.insert(0, '.')
 
-# Standard library imports
-import os
 
-# Third-Party library imports
-import pytest
 from sqlalchemy.exc import OperationalError
 
 # local imports
