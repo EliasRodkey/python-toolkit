@@ -35,21 +35,18 @@ import random
 import pytest
 
 # local imports
+from local_db_handler import DEFAULT_DB_DIRECTORY
 from local_db_handler.database_file import DatabaseFile
+
 
 
 # Constants
 TEST_DB = 'test.db'
 FAKE_DB = 'fake.db'
-TEST_DB_DIR = os.path.join(os.curdir, 'data')
-TEST_DB_PATH = os.path.join(TEST_DB_DIR, TEST_DB)
-TEST_DB_ABS_DIR = os.path.abspath(TEST_DB_DIR)
-TEST_DB_ABS_PATH = os.path.abspath(TEST_DB_PATH)
-
 
 
 # Functions
-def test_create_database():
+def test_create_database_default():
     '''Tests the DatabaseFile.create() function from database_file by creating an new db file in the default db location and checking if it exists'''
     # Create db file in default location
     test_db = DatabaseFile(TEST_DB)
@@ -57,30 +54,24 @@ def test_create_database():
     assert os.path.exists(test_db.abspath)
 
     # Delete db file
-    os.remove(os.path.join(TEST_DB_ABS_PATH))
+    os.remove(os.path.abspath(os.path.join(DEFAULT_DB_DIRECTORY, TEST_DB)))
     assert not os.path.exists(test_db.abspath)
 
 
-# Pytest parameters for move db file test
-@pytest.mark.parametrize(('db_dir_1', 'db_dir_2'), [
-    (get_two_distinct_dir()),
-    (get_two_distinct_dir()),
-    (get_two_distinct_dir()),
-])
-
-def test_move_database(db_dir_1:str, db_dir_2:str):
+def test_move_database():
     '''Tests the DatabaseFile.move() function from database_file by moving a db file from one location to another'''
     # Create db file in default location
-    test_db = DatabaseFile(TEST_DB, db_dir_1)
+    test_db = DatabaseFile(TEST_DB)
     test_db.create()
 
     # Move the database file to a new location
-    test_db.move(db_dir_2)
-    assert test_db.directory == db_dir_2
+    new_db_dir = '.\\data'
+    test_db.move(new_db_dir)
+    assert test_db.directory == new_db_dir
     assert os.path.exists(test_db.abspath)
 
     # Delete db file
-    os.remove(os.path.join(db_dir_2, TEST_DB))
+    os.remove(os.path.join(new_db_dir, TEST_DB))
     assert not os.path.exists(test_db.abspath)
 
 

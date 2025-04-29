@@ -10,8 +10,7 @@ Funcitons:
 '''
 
 # Initiate module logger
-from . import Logger, ELF
-from .utils import DatabaseDefaults
+from . import Logger, ELF, DEFAULT_DB_DIRECTORY
 
 # Third-Party library imports
 from sqlalchemy import create_engine
@@ -24,7 +23,7 @@ _logger.add_file_handler(format=ELF.FORMAT_LOGGER_NAME)
 
 
 # Functions
-def create_engine_conn(relative_db_path:str=DatabaseDefaults.RELATIVE_PATH) -> object:
+def create_engine_conn(relative_db_path:str=DEFAULT_DB_DIRECTORY) -> object:
     '''
     Create and returns an SQLalchemy engine from a given db URL string
 

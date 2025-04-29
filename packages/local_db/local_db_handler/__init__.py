@@ -18,6 +18,9 @@ __author__ = 'Elias Rodkey'
 from loggers import Logger
 from loggers import ELoggingFormats as ELF
 
+# Package Level Constants
+DEFAULT_DB_DIRECTORY = 'data\\dbs'
+
 # Imports modules, functions, and classes for clean package interface
 from .db_connections import create_engine, create_session
 from .database_file import DatabaseFile

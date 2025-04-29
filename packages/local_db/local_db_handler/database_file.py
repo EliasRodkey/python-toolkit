@@ -28,9 +28,8 @@ from dataclasses import dataclass, field
 # import pandas as pd
 
 # local imports
-from . import Logger, ELF
+from . import Logger, ELF, DEFAULT_DB_DIRECTORY
 from .utils import os, check_db_exists, is_db_file
-from .utils import DatabaseDefaults
 
 # Initialize module logger
 _logger = Logger('local_db_file')
@@ -40,13 +39,13 @@ _logger.add_file_handler(format=ELF.FORMAT_LOGGER_NAME)
 
 class DatabaseFile():
     '''a dataclass which manages a single database file, name attribute must be valid .db filename'''
-    def __init__(self, name, directory=DatabaseDefaults.RELATIVE_DIRECTORY):
+    def __init__(self, name, directory=DEFAULT_DB_DIRECTORY):
         '''
         initializes a DatabaseFile object with a name and directory
 
         Args:
             name (str): the name of the database file, must be a valid .db filename
-            directory (str): the directory where the database file is located, default is os.curdir/data/db_files
+            directory (str): the relative directory where the database file is located, default is 'os.curdir/data/db_files'
         '''
         # Check if the name is a valid database filename
         if is_db_file(name):
@@ -59,6 +58,11 @@ class DatabaseFile():
         self.directory = directory
         self.file_path = os.path.join(self.directory, self.name)
         self.abspath = os.path.abspath(self.file_path)
+
+        # If the directory does not exist, create it
+        if not os.path.exists(self.directory):
+            _logger.warning(f'DatabaseFile.__init__() -> {directory} does not exist. Creating at {self.file_path}...')
+            os.makedirs(directory)
 
 
     def exists(self) -> bool:
