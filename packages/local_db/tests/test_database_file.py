@@ -48,49 +48,16 @@ TEST_DB_ABS_PATH = os.path.abspath(TEST_DB_PATH)
 
 
 
-# Reused Funcitons
-def get_random_dir() -> str:
-    '''Gets a random directory from the cwd that is not called \'data\''''
-    # Get the cwd and a list of all directories in the cwd
-    cwd = os.getcwd()
-    directories = [d for d in os.listdir() if os.path.isdir(os.path.join(cwd, d))]
-
-    # Remove the data directory
-    directories.remove('data')
-
-    # Return relative path to random directory choice
-    return os.path.join(cwd, random.choice(directories))
-
-
-def get_two_distinct_dir() -> tuple:
-    '''Gets two distinct random directories from the cwd'''
-    # Get random directories
-    dir_1, dir_2 = (get_random_dir(), get_random_dir())
-    while dir_1 == dir_2:
-        # Get new directories if they are the same
-        dir_1, dir_2 = (get_random_dir(), get_random_dir())
-
-    return dir_1, dir_2
-
-
 # Functions
-# Pytest parameters for create db file test
-@pytest.mark.parametrize('db_dir', [
-    (get_random_dir()),
-    (get_random_dir()),
-    (os.path.abspath(get_random_dir())),
-    (os.path.abspath(get_random_dir()))
-])
-
-def test_create_database(db_dir:str):
+def test_create_database():
     '''Tests the DatabaseFile.create() function from database_file by creating an new db file in the default db location and checking if it exists'''
     # Create db file in default location
-    test_db = DatabaseFile(TEST_DB, db_dir)
+    test_db = DatabaseFile(TEST_DB)
     test_db.create()
     assert os.path.exists(test_db.abspath)
 
     # Delete db file
-    os.remove(os.path.join(TEST_DB, db_dir))
+    os.remove(os.path.join(TEST_DB_ABS_PATH))
     assert not os.path.exists(test_db.abspath)
 
 

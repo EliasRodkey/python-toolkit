@@ -29,29 +29,36 @@ from dataclasses import dataclass, field
 
 # local imports
 from . import Logger, ELF
-from .utils import os, check_db_exists
+from .utils import os, check_db_exists, is_db_file
+from .utils import DatabaseDefaults
 
 # Initialize module logger
 _logger = Logger('local_db_file')
 _logger.add_file_handler(format=ELF.FORMAT_LOGGER_NAME)
 
 
-# Constants
-DEFAULT_DB_DIR = os.path.join(os.curdir, 'data')
 
-
-
-@dataclass
 class DatabaseFile():
     '''a dataclass which manages a single database file, name attribute must be valid .db filename'''
-    name: str 
-    directory: str
-    path: str = field(init=False, repr=False)
-    abspath: str = field(init=False, repr=False)
+    def __init__(self, name, directory=DatabaseDefaults.RELATIVE_DIRECTORY):
+        '''
+        initializes a DatabaseFile object with a name and directory
 
-    def __post_init__(self):
-        self.path = os.path.join(self.directory, self.name)
-        self.abspath = os.path.abspath(self.path)
+        Args:
+            name (str): the name of the database file, must be a valid .db filename
+            directory (str): the directory where the database file is located, default is os.curdir/data/db_files
+        '''
+        # Check if the name is a valid database filename
+        if is_db_file(name):
+            self.name = name
+        else:
+            _logger.error(f'DatabaseFile.__init__() -> {name} is not a valid database filename.')
+            raise ValueError(f'{name} is not a valid database filename.')
+        
+        # Initialize the directory and path attributes
+        self.directory = directory
+        self.file_path = os.path.join(self.directory, self.name)
+        self.abspath = os.path.abspath(self.file_path)
 
 
     def exists(self) -> bool:
@@ -65,9 +72,9 @@ class DatabaseFile():
         if self.exists():
             _logger.info(f'{self.name} already exists in {self.directory}')
         else:
-            sqlite3.connect(self.path).close()
+            sqlite3.connect(self.file_path).close()
             _logger.info(f'database file {self.name} created.')
-            _logger.debug(f'DatabaseFile.create() -> new db file path: {self.path}')
+            _logger.debug(f'DatabaseFile.create() -> new db file path: {self.file_path}')
 
 
     def move(self, target_directory: str) -> None:
@@ -82,9 +89,9 @@ class DatabaseFile():
         elif self.exists():
             # Moves to new directory if it doesn't exist and the current file exists
             new_path = os.path.join(target_directory, self.name)
-            os.rename(self.path, new_path)
-            self.path = new_path
-            self.abspath = os.path.abspath(self.path)
+            os.rename(self.file_path, new_path)
+            self.file_path = new_path
+            self.abspath = os.path.abspath(self.file_path)
             self.directory = target_directory
         else:
             _logger.error(f'DatabaseFile.move() -> {self.name} cannot be moved because it doesn\'t exist in {self.directory}')

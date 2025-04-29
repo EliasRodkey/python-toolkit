@@ -11,6 +11,7 @@ Funcitons:
 
 # Initiate module logger
 from . import Logger, ELF
+from .utils import DatabaseDefaults
 
 # Third-Party library imports
 from sqlalchemy import create_engine
@@ -23,19 +24,20 @@ _logger.add_file_handler(format=ELF.FORMAT_LOGGER_NAME)
 
 
 # Functions
-def create_engine_conn(rel_db_url:str):
+def create_engine_conn(relative_db_path:str=DatabaseDefaults.RELATIVE_PATH) -> object:
     '''
     Create and returns an SQLalchemy engine from a given db URL string
 
     Args:
-        rel_db_url (str): the relative path to the database file, must be a valid .db filename
+        relative_db_path (str): the relative path to the database file, must be a valid .db filename
     
     Returns:
         engine: a SQLalchemy engine object which can be used to connect to the database
     '''
-    _logger.info(f'creating connection engine to {rel_db_url}...')
 
-    return create_engine(f'sqlite:///{rel_db_url}')
+    _logger.info(f'creating connection engine to {relative_db_path}...')
+
+    return create_engine(f'sqlite:///{relative_db_path}')
 
 
 def create_session(engine):

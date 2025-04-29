@@ -19,7 +19,7 @@ from loggers import Logger
 from loggers import ELoggingFormats as ELF
 
 # Imports modules, functions, and classes for clean package interface
-from .db_connections import create_db_session
+from .db_connections import create_engine, create_session
 from .database_file import DatabaseFile
 from .utils import check_db_exists, is_db_file
 

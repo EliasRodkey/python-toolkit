@@ -11,6 +11,7 @@ Funcitons:
 
 # Standard library imports
 import os
+from enum import Enum
 
 # Initiate module logger
 from . import Logger, ELF
@@ -21,8 +22,20 @@ _logger.add_file_handler(format=ELF.FORMAT_LOGGER_NAME)
 
 
 
+# Constants Enum class
+class DatabaseDefaults(Enum):
+    '''Enum class for default database file names and directories'''
+    RELATIVE_DIRECTORY = os.path.join(os.curdir, 'data\\dbs')
+    RELATIVE_PATH = os.path.join(os.curdir, RELATIVE_DIRECTORY)
+    DATABASE_URL = f'sqlite:///{RELATIVE_PATH}'
+
+
+    def __str__(self):
+        return str(self.value)
+
+
 # Functions
-def check_db_exists(db_filename:str, db_dir:str) -> bool:
+def check_db_exists(db_filename:str, db_dir:str=DatabaseDefaults.RELATIVE_PATH) -> bool:
     '''
     Checks a given db_url to see if it has already been created
 
@@ -60,9 +73,12 @@ def is_db_file(filename:str) -> bool:
         bool: True if the file is a .db file, False otherwise
     '''
     try:
+        # Check if filename is a string that ends with .db
         _logger.debug(f'is_db_file -> checking if {filename} is a .db file...')
         return filename.lower().endswith('.db')
+    
     except AttributeError as e:
+        # If filename is not a string, log the error and return False
         _logger.error(f'is_db_file -> {filename} is not a string: {e}')
         return False
 
