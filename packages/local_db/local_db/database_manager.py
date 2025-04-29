@@ -20,12 +20,13 @@ Classes:
 from . import Logger, ELF
 
 # Third-Party library imports
-# import pandas as pd
+import pandas as pd
+from typing import List
 
 # local imports
 from local_db.database_connections import create_engine_conn, create_session
 from local_db.database_file import DatabaseFile
-from local_db.utils import os
+from local_db.utils import map_dtype_list_to_sql
 
 
 # Initialize module logger
@@ -64,13 +65,56 @@ class DatabaseManager():
         Args:
             **kwargs: Keyword arguments representing the attributes of the item to be added.
         '''
-        # Create a new instance of the database object class with the provided attributes
-        new_item = self.table_class(**kwargs)
 
-        # Add the new item to the session and commit the changes to the database
-        self.session.add(new_item)
+        # Check to make sure the dictionary keys match the database table columns
+        if self._dict_compatible(kwargs):
+
+            # Create a new instance of the database object class with the provided attributes
+            new_item = self.table_class(**kwargs)
+
+            # Add the new item to the session and commit the changes to the database
+            self.session.add(new_item)
+        
+            # Commit the changes to the database
+            self.session.commit()
+
+            _logger.info(f'Item added to database: {self.table_class.__tablename__} with attributes: {kwargs}')
+    
+
+    def add_multiple_items(self, entries: List[dict]):
+        '''
+        Adds a new item to the database. unpack a dictionary if attributes using '**' operator
+
+        Args:
+            **kwargs: Keyword arguments representing the attributes of the item to be added.
+        '''
+
+        # Create a new instance of the database object class with the provided attributes
+        for entry in entries:
+            self.add_item(entry)
+
+        # Commit the changes to the database
         self.session.commit()
-        return new_item
+
+
+    def append_dataframe(self, df):
+        '''
+        Appends a pandas DataFrame to the database table.
+
+        Args:
+            df (pd.DataFrame): The DataFrame to be appended to the database table.
+        '''
+
+        # Check to make sure the dataframe columns match the database table columns
+        if self._df_compatible(df):
+
+            # Append the DataFrame to the database table using the SQLAlchemy engine
+            df.to_sql(self.table_class.__tablename__, self.engine, if_exists='append', index=False)
+        
+            # Commit the changes to the database
+            self.session.commit()
+
+            _logger.info(f'DataFrame appended to database: {self.table_class.__tablename__} with attributes: {df.columns.tolist()}')
 
 
     def fetch_all_items(self):
@@ -103,6 +147,7 @@ class DatabaseManager():
         else:
             return None
     
+
     def fetch_items_by_attribute(self, **kwargs):
         '''
         Fetches items from the database based on specified attributes.
@@ -124,6 +169,18 @@ class DatabaseManager():
             # If no results are found, return an empty list
             return []
 
+    
+    def to_dataframe(self):
+        '''
+        Converts the database table to a pandas DataFrame.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing all items in the database table.
+        '''
+
+        # Fetch all items from the database and convert them to a DataFrame
+        return pd.read_sql(self.session.query(self.table_class).statement, self.session.bind)
+    
 
     def update_item(self, item_id, **kwargs):
         '''
@@ -134,20 +191,24 @@ class DatabaseManager():
             **kwargs: Keyword arguments representing the attributes to be updated.
         '''
 
-        # Locate the item in the database using its ID
-        item = self.session.query(self.table_class).filter_by(id=item_id).first()
-
-        # If the item exists, update its attributes and commit the changes to the database
-        if item:
-            # Unpack the keyword arguments and update the item's attributes
-            for key, value in kwargs.items():
-                if hasattr(item, key): # Check if the attribute exists in the item
-                    setattr(item, key, value)
-
-            # Commit the changes to the database
-            self.session.commit()
-
+        ## Check to make sure the dictionary keys match the database table columns
+        if self._dict_columns_match(kwargs):
             
+            # Locate the item in the database using its ID
+            item = self.session.query(self.table_class).filter_by(id=item_id).first()
+
+            # If the item exists, update its attributes and commit the changes to the database
+            if item:
+
+                # Unpack the keyword arguments and update the item's attributes
+                for key, value in kwargs.items():
+                    if hasattr(item, key): # Check if the attribute exists in the item
+                        setattr(item, key, value)
+
+                # Commit the changes to the database
+                self.session.commit()
+
+
     def delete_item(self, item_id):
         '''
         Deletes an item from the database based on its ID.
@@ -183,6 +244,145 @@ class DatabaseManager():
         self.engine.dispose()
         _logger.info(f'DatabaseManager connection closed with file: {self.file.name} and class type: {self.table_class}')
         _logger.debug(f'DatabaseManager.end_session() -> connection closed with file {self.file.abspath} and object class type: {self.table_class}')
+    
+
+    def _df_columns_match(self, df: pd.DataFrame) -> bool:
+        '''
+        Checks if the columns of the input data match the columns of the database table.
+
+        Args:
+            database_input (pd.DataFrame): The input data to be checked.
+
+        Returns:
+            bool: True if the columns match, False otherwise.
+        '''
+
+        # Check if the columns of the input data match the columns of the database table
+        columns_match = set(df.columns).issubset(set(self.table_class.get_column_names()))
+
+        if columns_match:
+            _logger.debug(f'DatabaseManager._check_df_columns_match() -> DataFrame columns match database table columns: {df.columns.tolist()}')
+            return columns_match
+        else:
+            # Raise ValueError if they do not match
+            _logger.error(f'DatabaseManager._check_df_columns_match() -> DataFrame columns do not match database table columns: {df.columns.tolist()}')
+            raise ValueError(f'DataFrame columns do not match database table columns: {df.columns.tolist()}')
+    
+
+    def _df_types_match(self, df: pd.DataFrame) -> bool:
+        '''
+        Checks if the data types of the input DataFrame match the data types of the database table.
+
+        Args:
+            df (pd.DataFrame): The input DataFrame to be checked.
+        
+        Returns:
+            bool: True if the data types match, False otherwise.
+        '''
+        # Map the data types of the DataFrame to SQLAlchemy types
+        sql_datatypes = map_dtype_list_to_sql(df.dtypes.tolist())
+        sql_datatypes_dict = {}
+        for i, column in enumerate(df.columns.tolist()):
+            sql_datatypes_dict[column] = sql_datatypes[i]
+
+        # Get the data types of the database table columns
+        table_datatypes_set = set(self.table_class.get_column_types().items())
+
+        # Check if the data types of the input DataFrame match the data types of the database table
+        types_match = set(sql_datatypes_dict.items()).issubset(set(table_datatypes_set))
+
+        if types_match:
+            _logger.debug(f'DatabaseManager._check_df_types_match() -> DataFrame types match database table types: {sql_datatypes}')
+            return types_match
+        else:
+            # Raise ValueError if they do not match
+            _logger.error(f'DatabaseManager._check_df_types_match() -> DataFrame types do not match database table types: {sql_datatypes}')
+            raise TypeError(f'DataFrame types do not match database table types: {sql_datatypes}')
+    
+
+    def _df_compatible(self, df: pd.DataFrame) -> bool:
+        '''
+        Checks if the input DataFrame is compatible with the database table.
+
+        Args:
+            df (pd.DataFrame): The input DataFrame to be checked.
+
+        Returns:
+            bool: True if the DataFrame is compatible, False otherwise.
+        '''
+
+        # Check if the columns and data types of the DataFrame match the database table
+        return self._df_columns_match(df) and self._df_types_match(df)
+
+
+    def _dict_columns_match(self, data: dict) -> bool:
+        '''
+        Checks if the keys of the input dictionary match the columns of the database table.
+
+        Args:
+            data (dict): The input dictionary to be checked.
+
+        Returns:
+            bool: True if the keys match, False otherwise.
+        '''
+
+        # Check if the keys of the input dictionary match the columns of the database table
+        columns_match = set(data.keys()).issubset(set(self.table_class.get_column_names()))
+
+        if columns_match:
+            _logger.debug(f'DatabaseManager._check_dict_columns_match() -> Dictionary columns match database table columns: {data.keys()}')
+            return columns_match
+        else:
+            # Raise ValueError if they do not match
+            _logger.error(f'DatabaseManager._check_dict_columns_match() -> Dictionary columns do not match database table columns: {data.keys()}')
+            raise ValueError(f'Dictionary columns do not match database table columns: {data.keys()}')
+
+
+    def _dict_types_match(self, data: dict) -> bool:
+        '''
+        Checks if the data types of the input DataFrame match the data types of the database table.
+
+        Args:
+            data: The input dict to be checked.
+        
+        Returns:
+            bool: True if the data types match, False otherwise.
+        '''
+        # Map the data types of the DataFrame to SQLAlchemy types
+        sql_datatypes = map_dtype_list_to_sql([pd.Series([value]).dtype for value in data.values()])
+        sql_datatypes_dict = {}
+        for i, column in enumerate(data.keys()):
+            sql_datatypes_dict[column] = sql_datatypes[i]
+
+        # Get the data types of the database table columns
+        table_datatypes_set = set(self.table_class.get_column_types().items())
+
+        # Check if the data types of the input DataFrame match the data types of the database table
+        types_match = set(sql_datatypes_dict.items()).issubset(set(table_datatypes_set))
+
+        if types_match:
+            _logger.debug(f'DatabaseManager._check_dict_types_match() -> Dictionary types match database table types: {sql_datatypes}')
+            return types_match
+        else:
+            # Raise ValueError if they do not match
+            _logger.error(f'DatabaseManager._check_dict_types_match() -> Dictionary types do not match database table types: {sql_datatypes}')
+            raise TypeError(f'Dictionary types do not match database table types: {sql_datatypes}')
+        
+
+    def _dict_compatible(self, data: dict) -> bool:
+        '''
+        Checks if the input dictionary is compatible with the database table.
+
+        Args:
+            data (dict): The input dictionary to be checked.
+
+        Returns:
+            bool: True if the dictionary is compatible, False otherwise.
+        '''
+
+        # Check if the columns and data types of the DataFrame match the database table
+        return self._dict_columns_match(data) and self._dict_types_match(data)
+    
 
 if __name__ == "__main__":
     pass

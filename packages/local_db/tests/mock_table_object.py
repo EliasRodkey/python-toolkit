@@ -18,6 +18,7 @@ from sqlalchemy import Column, Integer, String
 
 # local imports
 from local_db.base_table import BaseTable
+import pandas as pd
 
 
 # Constants
@@ -36,7 +37,17 @@ TEST_ENTRY_3 = {
     'age': 30,
     'email': 'alice.smith@email.com'
 }
-
+INVALID_ENTRY = {
+    'name': 'Invalid Entry',
+    'age': 'not an integer',
+    'email': 12345
+}
+INVALID_DF = pd.DataFrame({
+    'id': ['one', 'two', 'three'],
+    'name': [123, 456, 789],
+    'age': ['thirty', 'twenty-five', 'forty'],
+    'email': [True, False, None]
+})
 
 class MockTableObject(BaseTable):
     '''A table object for testing purposes'''

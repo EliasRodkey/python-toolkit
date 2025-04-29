@@ -24,11 +24,16 @@ import sys
 sys.path.insert(0, '.')
 
 
+# Third party imports
+import pandas as pd
+import pytest
+
 # local imports
 from local_db import DEFAULT_DB_DIRECTORY
 from local_db.database_file import DatabaseFile
 from local_db.database_manager import DatabaseManager
-from .mock_table_object import MockTableObject, TEST_ENTRY_1, TEST_ENTRY_2, TEST_ENTRY_3
+from .mock_table_object import MockTableObject
+from .mock_table_object import TEST_ENTRY_1, TEST_ENTRY_2, TEST_ENTRY_3, INVALID_ENTRY, INVALID_DF
 
 
 db_file = DatabaseFile('test.db')
@@ -104,6 +109,64 @@ class TestDatabaseManager:
         assert not db_manager.file.exists(), 'Database file should not exist after deletion.'
 
     
+    def test_add_item_invalid(self):
+        '''Tests the add_item() method of the DatabaseManager class with invalid data'''
+
+        # Create a DatabaseManager instance
+        db_manager = DatabaseManager(MockTableObject, db_file)
+
+        # Add an item with invalid data to the database
+        with pytest.raises(TypeError):
+            db_manager.add_item(**INVALID_ENTRY)
+
+        assert db_manager.session.query(MockTableObject).count() == 0, 'Invalid item added to the database.'
+
+        # Close the session and delete the database file
+        db_manager.end_session()
+        db_manager.file.delete()
+        assert not db_manager.file.exists(), 'Database file should not exist after deletion.'
+
+
+    # def test_add_item_duplicate(self):
+    #     '''Tests the add_item() method of the DatabaseManager class with duplicate data'''
+
+    #     # Create a DatabaseManager instance
+    #     db_manager = DatabaseManager(MockTableObject, db_file)
+
+    #     # Add an item to the database
+    #     db_manager.add_item(**TEST_ENTRY_1)
+
+    #     # Attempt to add a duplicate item to the database
+    #     db_manager.add_item(**TEST_ENTRY_1)
+
+    #     assert db_manager.session.query(MockTableObject).count() == 1, 'Duplicate item added to the database.'
+
+    #     # Close the session and delete the database file
+    #     db_manager.end_session()
+    #     db_manager.file.delete()
+    #     assert not db_manager.file.exists(), 'Database file should not exist after deletion.'
+
+
+    # def test_append_dataframe(self):
+    #     '''Tests the append_dataframe() method of the DatabaseManager class'''
+
+    #     # Create a DatabaseManager instance
+    #     db_manager = DatabaseManager(MockTableObject, db_file)
+
+    #     # Create a DataFrame with test data
+    #     df = pd.DataFrame([TEST_ENTRY_1, TEST_ENTRY_2])
+
+    #     # Append the DataFrame to the database
+    #     db_manager.append_dataframe(df)
+
+    #     assert db_manager.session.query(MockTableObject).count() == 2, 'DataFrame not appended to the database.'
+
+    #     # Close the session and delete the database file
+    #     db_manager.end_session()
+    #     db_manager.file.delete()
+    #     assert not db_manager.file.exists(), 'Database file should not exist after deletion.'
+
+
     def test_fetch_all_items(self):
         '''Tests the fetch_all_items() method of the DatabaseManager class'''
 
@@ -179,6 +242,30 @@ class TestDatabaseManager:
         db_manager.file.delete()
         assert not db_manager.file.exists(), 'Database file should not exist after deletion.'
 
+
+    # def test_to_dataframe(self):
+    #     '''Tests the to_dataframe() method of the DatabaseManager class'''
+
+    #     # Create a DatabaseManager instance
+    #     db_manager = DatabaseManager(MockTableObject, db_file)
+
+    #     # Add multiple items to the database
+    #     db_manager.add_item(**TEST_ENTRY_1)
+    #     db_manager.add_item(**TEST_ENTRY_2)
+    #     db_manager.add_item(**TEST_ENTRY_3)
+
+    #     # Fetch all items from the database
+    #     df = db_manager.to_dataframe()
+    #     assert len(df) == 3, 'DataFrame does not contain the expected number of items.'
+    #     assert df.iloc[0]['name'] == TEST_ENTRY_1['name'], f'Item 1 name does not match {df.iloc[0]["name"]}.'
+    #     assert df.iloc[1]['name'] == TEST_ENTRY_2['name'], f'Item 2 name does not match {df.iloc[1]["name"]}.'
+    #     assert df.iloc[2]['name'] == TEST_ENTRY_3['name'], f'Item 3 name does not match {df.iloc[2]["name"]}.'
+
+    #     # Close the session and delete the database file
+    #     db_manager.end_session()
+    #     db_manager.file.delete()
+    #     assert not db_manager.file.exists(), 'Database file should not exist after deletion.'
+
     
     def test_update_item(self):
         '''Tests the update_item() method of the DatabaseManager class'''
@@ -216,6 +303,83 @@ class TestDatabaseManager:
         db_manager.delete_item(1)
 
         assert db_manager.session.query(MockTableObject).count() == 0, 'Item not deleted from the database.'
+
+        # Close the session and delete the database file
+        db_manager.end_session()
+        db_manager.file.delete()
+        assert not db_manager.file.exists(), 'Database file should not exist after deletion.'
+
+    
+    def test_df_columns_match_true(self):
+        '''Tests if the DataFrame columns match the database table columns'''
+
+        # Create a DatabaseManager instance
+        db_manager = DatabaseManager(MockTableObject, db_file)
+
+        # Add an item to the database
+        db_manager.add_item(**TEST_ENTRY_1)
+
+        # Fetch all items from the database as a DataFrame
+        df = db_manager.to_dataframe()
+
+        # Check if the DataFrame columns match the database table columns
+        assert db_manager._df_columns_match(df), 'DataFrame columns do not match database table columns.'
+
+        # Close the session and delete the database file
+        db_manager.end_session()
+        db_manager.file.delete()
+        assert not db_manager.file.exists(), 'Database file should not exist after deletion.'
+
+
+    def test_dict_columns_match_true(self):
+        '''Tests if the DataFrame columns match the database table columns'''
+
+        # Create a DatabaseManager instance
+        db_manager = DatabaseManager(MockTableObject, db_file)
+
+        # Add an item to the database
+        db_manager.add_item(**TEST_ENTRY_1)
+
+        # Check if the DataFrame columns match the database table columns
+        assert db_manager._dict_columns_match(TEST_ENTRY_2), 'DataFrame columns do not match database table columns.'
+
+        # Close the session and delete the database file
+        db_manager.end_session()
+        db_manager.file.delete()
+        assert not db_manager.file.exists(), 'Database file should not exist after deletion.'
+
+    
+    def test_df_columns_match_false(self):
+        '''Tests if the DataFrame columns match the database table columns'''
+
+        # Create a DatabaseManager instance
+        db_manager = DatabaseManager(MockTableObject, db_file)
+
+        # Add an item with invalid data to the database
+        with pytest.raises(TypeError):
+            db_manager._df_types_match(INVALID_DF)
+
+        # Check if the DataFrame columns match the database table columns
+        assert db_manager.session.query(MockTableObject).count() == 0, 'DataFrame columns match database table columns.'
+
+        # Close the session and delete the database file
+        db_manager.end_session()
+        db_manager.file.delete()
+        assert not db_manager.file.exists(), 'Database file should not exist after deletion.'
+
+
+    def test_dict_columns_match_false(self):
+        '''Tests if the DataFrame columns match the database table columns'''
+
+        # Create a DatabaseManager instance
+        db_manager = DatabaseManager(MockTableObject, db_file)
+
+        # Add an item with invalid data to the database
+        with pytest.raises(TypeError):
+            db_manager._dict_types_match(INVALID_ENTRY)
+
+        # Check if the DataFrame columns match the database table columns
+        assert db_manager.session.query(MockTableObject).count() == 0, 'DataFrame columns match database table columns.'
 
         # Close the session and delete the database file
         db_manager.end_session()

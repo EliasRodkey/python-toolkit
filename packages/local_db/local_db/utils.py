@@ -12,6 +12,8 @@ Funcitons:
 # Standard library imports
 import os
 from enum import Enum
+import pandas as pd
+from sqlalchemy import Integer, Float, String, Boolean, DateTime, LargeBinary
 
 # Initiate module logger
 from . import Logger, ELF, DEFAULT_DB_DIRECTORY
@@ -70,5 +72,62 @@ def is_db_file(filename:str) -> bool:
         return False
 
 
+def map_dtype_to_sql(dtype):
+    # TODO: Add tests for maping data types
+    '''
+    Maps a given numpy data type to its corresponding SQLAlchemy type.
+
+    Args:
+        dtype: The numpy data type to be mapped.
+    
+    Returns:
+        The corresponding SQLAlchemy type as a string.
+    '''
+    if pd.api.types.is_integer_dtype(dtype):
+        return Integer
+    
+    elif pd.api.types.is_float_dtype(dtype):
+        return Float
+    
+    elif pd.api.types.is_bool_dtype(dtype):
+        return Boolean
+    
+    elif pd.api.types.is_datetime64_any_dtype(dtype):
+        return DateTime
+    
+    elif pd.api.types.is_object_dtype(dtype):
+        return String
+    
+    elif pd.api.types.is_string_dtype(dtype):
+        return String
+    
+    elif pd.api.types.is_binary_dtype(dtype):  # Check for binary data
+        return LargeBinary
+    
+    elif pd.api.types.is_list_dtype(dtype):
+        return LargeBinary  # or String, depending on your use case
+    
+    elif pd.api.types.is_dict_dtype(dtype):
+        return LargeBinary  # or String, depending on your use case
+    
+    else:
+        raise ValueError(f"Unsupported pandas dtype: {dtype}")
+    
+
+def map_dtype_list_to_sql(dtype_list):
+    '''
+    Maps a list of numpy data types to their corresponding SQLAlchemy types.
+
+    Args:
+        dtype_list: A list of numpy data types to be mapped.
+    
+    Returns:
+        A list of corresponding SQLAlchemy types as strings.
+    '''
+    return [map_dtype_to_sql(dtype) for dtype in dtype_list]
+
+
 if __name__ == "__main__":
     print(check_db_exists('test.db'))
+
+    print(map_dtype_list_to_sql([int, str, float]))
