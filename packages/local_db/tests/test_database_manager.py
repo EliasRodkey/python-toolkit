@@ -132,19 +132,16 @@ class TestDatabaseManager:
         assert clean_database.session.query(MockTableObject).count() == 1, 'Duplicate item added to the database.'
 
 
-    # def test_append_dataframe(self):
-    #     '''Tests the append_dataframe() method of the DatabaseManager class'''
+    def test_append_dataframe(self, clean_database):
+        '''Tests the append_dataframe() method of the DatabaseManager class'''
 
-    #     # Create a DatabaseManager instance
-    #     db_manager = DatabaseManager(MockTableObject, db_file)
+        # Create a DataFrame with test data
+        df = pd.DataFrame([TEST_ENTRY_1, TEST_ENTRY_2])
 
-    #     # Create a DataFrame with test data
-    #     df = pd.DataFrame([TEST_ENTRY_1, TEST_ENTRY_2])
+        # Append the DataFrame to the database
+        clean_database.append_dataframe(df)
 
-    #     # Append the DataFrame to the database
-    #     db_manager.append_dataframe(df)
-
-    #     assert db_manager.session.query(MockTableObject).count() == 2, 'DataFrame not appended to the database.'
+        assert clean_database.session.query(MockTableObject).count() == 2, 'DataFrame not appended to the database.'
 
 
     def test_fetch_all_items(self, clean_database):
@@ -199,23 +196,20 @@ class TestDatabaseManager:
         assert items[1].age == TEST_ENTRY_3['age'], f'Item 2 age does not match {items[1].age}.'
 
 
-    # def test_to_dataframe(self):
-    #     '''Tests the to_dataframe() method of the DatabaseManager class'''
+    def test_to_dataframe(self, clean_database):
+        '''Tests the to_dataframe() method of the DatabaseManager class'''
 
-    #     # Create a DatabaseManager instance
-    #     db_manager = DatabaseManager(MockTableObject, db_file)
+        # Add multiple items to the database
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
 
-    #     # Add multiple items to the database
-    #     db_manager.add_item(**TEST_ENTRY_1)
-    #     db_manager.add_item(**TEST_ENTRY_2)
-    #     db_manager.add_item(**TEST_ENTRY_3)
-
-    #     # Fetch all items from the database
-    #     df = db_manager.to_dataframe()
-    #     assert len(df) == 3, 'DataFrame does not contain the expected number of items.'
-    #     assert df.iloc[0]['name'] == TEST_ENTRY_1['name'], f'Item 1 name does not match {df.iloc[0]["name"]}.'
-    #     assert df.iloc[1]['name'] == TEST_ENTRY_2['name'], f'Item 2 name does not match {df.iloc[1]["name"]}.'
-    #     assert df.iloc[2]['name'] == TEST_ENTRY_3['name'], f'Item 3 name does not match {df.iloc[2]["name"]}.'
+        # Fetch all items from the database
+        df = clean_database.to_dataframe()
+        assert len(df) == 3, 'DataFrame does not contain the expected number of items.'
+        assert df.iloc[0]['name'] == TEST_ENTRY_1['name'], f'Item 1 name does not match {df.iloc[0]["name"]}.'
+        assert df.iloc[1]['name'] == TEST_ENTRY_2['name'], f'Item 2 name does not match {df.iloc[1]["name"]}.'
+        assert df.iloc[2]['name'] == TEST_ENTRY_3['name'], f'Item 3 name does not match {df.iloc[2]["name"]}.'
 
     
     def test_update_item(self, clean_database):

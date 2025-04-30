@@ -66,7 +66,7 @@ class DatabaseManager():
         Args:
             **kwargs: Keyword arguments representing the attributes of the item to be added.
         '''
-
+        # TODO: see what happens in the database when not enough columns are given and do something to make it look nice
         # Check to make sure the dictionary keys match the database table columns
         if self._dict_compatible(kwargs):
 
@@ -112,17 +112,26 @@ class DatabaseManager():
         Args:
             df (pd.DataFrame): The DataFrame to be appended to the database table.
         '''
-        # TODO: Add exception catch for integrity errors
+
         # Check to make sure the dataframe columns match the database table columns
         if self._df_compatible(df):
 
             # Append the DataFrame to the database table using the SQLAlchemy engine
             df.to_sql(self.table_class.__tablename__, self.engine, if_exists='append', index=False)
-        
-            # Commit the changes to the database
-            self.session.commit()
 
-            _logger.info(f'DataFrame appended to database: {self.table_class.__tablename__} with attributes: {df.columns.tolist()}')
+            try:
+                # Add the new item to the session and commit the changes to the database
+                self.session.flush() # Detects if the item already exists in the database
+
+            except sqlalchemy.exc.IntegrityError as e:
+                # Handle the IntegrityError if the item already exists in the database
+                self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
+                _logger.error(f'DatbaseManager.append_dataframe() -> dubplicates detected in: {self.table_class.__tablename__} with DataFrame attributes: {df.columns.tolist()}')
+                raise e
+            
+            finally:
+                self.session.commit() # Commit the changes to the database
+                _logger.info(f'DataFrame appended to database: {self.table_class.__tablename__} with DataFrame attributes: {df.columns.tolist()}')        
 
 
     def fetch_all_items(self):
@@ -134,7 +143,7 @@ class DatabaseManager():
         '''
         _logger.debug(f'DatabaseManager.fetch_all_items() -> Fetching all items from database: {self.table_class.__tablename__}')
         return self.session.query(self.table_class).all()
-    
+    # TODO: add a method that pastes a df onto the database table and replaces old values
 
     def fetch_item_by_id(self, item_id):
         '''

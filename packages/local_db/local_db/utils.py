@@ -72,7 +72,6 @@ def is_db_file(filename:str) -> bool:
 
 
 def map_dtype_to_sql(dtype):
-    # TODO: Add tests for maping data types
     '''
     Maps a given numpy data type to its corresponding SQLAlchemy type.
 
