@@ -8,4 +8,4 @@ version = "1.0.0"
 description = "package for handling local database files and data"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 license = "MIT"
-dependencies = ["requests", "numpy", "sqlalchemy", "sqlite3", "loggers", "typing", "pandas"]  # List your package dependencies here
+dependencies = ["requests", "numpy", "sqlalchemy", "loggers", "pandas"]  # List your package dependencies here
