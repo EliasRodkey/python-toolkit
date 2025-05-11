@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools", "wheel", "logging"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local_db"
+version = "1.0.0"
+description = "package for handling local database files and data"
+authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
+license = {text = "MIT"}
+dependencies = ["requests", "numpy", "sqlalchemy", "sqlite3", "git+https://github.com/EliasRodkey/loggers.git", "typing", "pandas"]  # List your package dependencies here
