@@ -77,7 +77,14 @@ Basic database funcitons:
     manager.add_item(entry: dictionary with columns matching the db table class)
     manager.add_multiple_items(entries: list of entries)
     manager.append_dataframe(df: pandas DataFrame with columns that match the db table class)
+   
     manager.fetch_all() -> returns all table class instances in the table
     manager.fetch_item_by_id(id: int) -> returns an individual table class instance with data
     manager.fetch_items_by_attribute(**kwargs) -> allows filtering of table by kwargs
-    manager.
+    manager.to_dataframe() -> Returns the database as a pandas DataFrame
+
+    manager.update_item(item_id: int, **kwargs) -> updates values kwargs of an item with a given ID
+    manager.delete_item(item_id: int)
+
+    manager.start_session() -> initiates when instance initialized
+    manager.end_session() -> should be called before exiting program
