@@ -22,7 +22,7 @@ from loggers import ELoggingFormats as ELF
 DEFAULT_DB_DIRECTORY = 'data\\dbs'
 
 # Imports modules, functions, and classes for clean package interface
-from .base_table import BaseTable
+from .base_table import BaseTable, ESQLDataTypes
 from .database_connections import create_engine_conn, create_session
 from .database_file import DatabaseFile
 from .database_manager import DatabaseManager
@@ -37,5 +37,5 @@ __all__ = [
     'DatabaseFile',
     'DatabaseManager',
     'BaseTable',
-    'Base'
+    'ESQLDataTypes'
 ]

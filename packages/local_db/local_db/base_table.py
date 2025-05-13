@@ -10,8 +10,57 @@ Functions:
     get_column_names(): Retrieves a list of column names for the table.
     get_column_types(): Retrieves a dictionary mapping column names to their data types.
 '''
-
+from enum import Enum
 from sqlalchemy.orm import declarative_base
+from sqlalchemy import (
+    Column,  # Defines a column in a table
+    Integer,  # Integer type
+    String,  # String type with optional length
+    Float,  # Floating-point number
+    Boolean,  # Boolean type (True/False)
+    Date,  # Date type (year, month, day)
+    DateTime,  # Date and time type
+    Time,  # Time type (hour, minute, second)
+    Text,  # Large text field
+    LargeBinary,  # Binary data (e.g., files, images)
+    JSON,  # JSON-encoded data
+    Enum,  # Enumerated type with fixed values
+    Numeric,  # Fixed-precision number
+    SmallInteger,  # Smaller integer type
+    BigInteger,  # Larger integer type
+    Interval,  # Time interval
+    Unicode,  # Unicode string
+    UnicodeText,  # Large Unicode text field
+    PickleType,  # Stores Python objects serialized via pickle
+    UUID,  # Universally unique identifier
+    ARRAY,  # Array type (PostgreSQL-specific)
+)
+
+
+class ESQLDataTypes(Enum):
+    """An Enum class containing all of the SQL datatypes available through sqlalchemy"""
+    Column = Column  # Defines a column in a table
+    Integer = Integer  # Integer type
+    String = String  # String type with optional length
+    Float = Float # Floating-point number
+    Boolean = Boolean  # Boolean type (True/False)
+    Date = Date  # Date type (year, month, day)
+    DateTime = DateTime  # Date and time type
+    Time = Time  # Time type (hour, minute, second)
+    Text = Text  # Large text field
+    LargeBinary = LargeBinary  # Binary data (e.g., files, images)
+    JSON = JSON  # JSON-encoded data
+    Enum = Enum  # Enumerated type with fixed values
+    Numeric = Numeric  # Fixed-precision number
+    SmallInteger = SmallInteger  # Smaller integer type
+    BigInteger = BigInteger  # Larger integer type
+    Interval = Interval  # Time interval
+    Unicode = Unicode  # Unicode string
+    UnicodeText = UnicodeText  # Large Unicode text field
+    PickleType = PickleType  # Stores Python objects serialized via pickle
+    UUID = UUID  # Universally unique identifier
+    ARRAY = ARRAY  # Array type (PostgreSQL-specific)
+
 
 Base = declarative_base()
 

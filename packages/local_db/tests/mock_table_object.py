@@ -14,10 +14,9 @@ sys.path.insert(0, '.')
 
 # Third-Party library imports
 import pytest
-from sqlalchemy import Column, Integer, String
 
 # local imports
-from local_db.base_table import BaseTable
+from local_db.base_table import BaseTable, ESQLDataTypes
 import pandas as pd
 
 
@@ -52,7 +51,7 @@ INVALID_DF = pd.DataFrame({
 class MockTableObject(BaseTable):
     '''A table object for testing purposes'''
     __tablename__ = 'test_table'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(50), nullable=False)
-    age = Column(Integer)
-    email = Column(String(100), unique=True)
+    id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
+    name = ESQLDataTypes.Column(ESQLDataTypes.String(50), nullable=False)
+    age = ESQLDataTypes.Column(ESQLDataTypes.Integer)
+    email = ESQLDataTypes.Column(ESQLDataTypes.String(100), unique=True)
