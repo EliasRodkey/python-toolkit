@@ -14,6 +14,7 @@ from enum import Enum
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import (
     Column,  # Defines a column in a table
+    UniqueConstraint,
     Integer,  # Integer type
     String,  # String type with optional length
     Float,  # Floating-point number
@@ -37,9 +38,8 @@ from sqlalchemy import (
 )
 
 
-class ESQLDataTypes(Enum):
+class ESQLDTypes(Enum):
     """An Enum class containing all of the SQL datatypes available through sqlalchemy"""
-    Column = Column  # Defines a column in a table
     Integer = Integer  # Integer type
     String = String  # String type with optional length
     Float = Float # Floating-point number
