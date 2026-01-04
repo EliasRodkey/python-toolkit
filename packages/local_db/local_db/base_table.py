@@ -38,8 +38,9 @@ from sqlalchemy import (
 )
 
 
-class ESQLDTypes(Enum):
+class ESQLDataTypes(Enum):
     """An Enum class containing all of the SQL datatypes available through sqlalchemy"""
+    Column = Column # SQLalchemy column class
     Integer = Integer  # Integer type
     String = String  # String type with optional length
     Float = Float # Floating-point number
