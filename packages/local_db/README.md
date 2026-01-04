@@ -12,7 +12,7 @@ creation, reading, editing, and deleting local database files
 1. **Install Package**
 Ensure you have access to the github repository
 Run the command:
-    pip install git+https://github.com/EliasRodkey/local_db_handler.git
+    pip install git+https://github.com/EliasRodkey/local_db.git
 
 
 2. **Import Package**
