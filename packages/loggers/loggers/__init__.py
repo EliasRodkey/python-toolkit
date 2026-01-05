@@ -4,5 +4,5 @@ from .utils import ELoggingFormats
 from .utils import create_datestamp, create_timestamp, create_log_datetime_stamp, compose_global_run_id
 
 # Define package-level variables
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __Author__ = 'Elias Rodkey'

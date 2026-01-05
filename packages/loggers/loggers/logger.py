@@ -21,7 +21,7 @@ class Logger:
 
     # Initialize instances dictionary
     _instances: Dict = {}
-    LOG_FILE_DEFAULT_DIRECTORY: str = 'data\\logs'
+    LOG_FILE_DEFAULT_DIRECTORY: str = os.path.join('data', 'logs')
 
     # Adds logging levels to Logger class so logging library doesn't have to imported every time Logger class is imported
     DEBUG = logging.DEBUG
