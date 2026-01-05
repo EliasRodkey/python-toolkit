@@ -70,7 +70,7 @@ class TestDatabaseFile:
         test_db.create()
 
         # Move the database file to a new location
-        new_db_dir = '.\\data'
+        new_db_dir = os.path.join(os.curdir, 'data')
         test_db.move(new_db_dir)
         assert test_db.directory == new_db_dir
         assert os.path.exists(test_db.abspath)

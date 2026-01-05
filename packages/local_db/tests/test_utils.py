@@ -35,7 +35,7 @@ from local_db.utils import Integer, Float, String, Boolean, DateTime, LargeBinar
 # Constants
 TEST_DB = 'test.db'
 FAKE_DB = 'fake.db'
-TEST_DB_DIR = os.path.join(os.curdir, 'data')
+TEST_DB_DIR = os.path.join(os.getcwd(), 'data')
 TEST_DB_PATH = os.path.join(TEST_DB_DIR, TEST_DB)
 CUSTOM_TEST_DB_DIR = os.path.join(TEST_DB_DIR, 'logs')
 CUSTOM_TEST_DB_PATH = os.path.join(CUSTOM_TEST_DB_DIR, TEST_DB)

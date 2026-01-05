@@ -1,6 +1,6 @@
 #!python3
 '''
-local_db_handler.db_file_handler.py
+local_db.database_file.py
 
 this module creates, deletes, and archives database files within a python project
 
@@ -14,10 +14,7 @@ root\\
 └   └──package
 
 Class:
-    - DBFile: a class which represents a db file object
-        - create_db: creates a new database file in a given directory
-        - delete_db: deletes a specified database file in a given directory
-        - move_db: moves a specified database file from one directory to another inside of a project
+    - DatabaseFile: a class which represents a db file object
 '''
 
 # Standard library imports
@@ -34,7 +31,15 @@ _logger.add_file_handler(format=ELF.FORMAT_LOGGER_NAME)
 
 
 class DatabaseFile():
-    '''a dataclass which manages a single database file, name attribute must be valid .db filename'''
+    '''
+    Class which manages a single database file, name attribute must be valid .db filename
+
+    Functions:
+        - exxists: checks if the database file exists in the given directory
+        - create: creates a new database file in the given directory
+        - move: moves the database file to a new directory
+        - delete: deletes the database file from the filesystem
+    '''
     def __init__(self, name, directory=DEFAULT_DB_DIRECTORY):
         '''
         initializes a DatabaseFile object with a name and directory

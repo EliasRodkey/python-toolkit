@@ -1,10 +1,10 @@
 #!python3
 '''
-local_db_handler.db_connections.py
+local_db.database_connections.py
 
 This module contains functions which allow for connections to existing local database files
 
-Funcitons:
+Functions:
     - create_engine_conn: creates a SQLalchemy engine object
     - create_session: creates and returns a SQLalchemy Session class object
 '''
@@ -53,7 +53,3 @@ def create_session(engine):
     
     Session = sessionmaker(bind=engine)
     return Session()
-
-
-if __name__ == "__main__":
-    pass

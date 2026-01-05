@@ -1,6 +1,6 @@
 #!python3
 '''
-local_db_handler.utils.py
+local_db.utils.py
 
 This module contains several helper functions for the local_db_handler package
 

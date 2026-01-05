@@ -1,19 +1,17 @@
 #!python3
 '''
-local_db_handler.database_manader.py
+local_db.database_manager.py
 
 This module contains a database object class
 
 Classes:
-    - LocalDB: a class object which allows for the following actions to be performed:
+    - DatabaseManager: a class object which allows for the following actions to be performed:
         - Creation
         - Reading
         - Editing
         - Updating
         - Deletion
 
-    - LocalDB functions:
-        - 
 '''
 
 # Initiate module logger
@@ -38,7 +36,20 @@ _logger.add_file_handler(format=ELF.FORMAT_LOGGER_NAME)
 
 class DatabaseManager():
     '''
-    Generic database manager wrapper class that allows for simple database operations to be performed on a local database file.
+    Generic Database manager wrapper class that allows for simple database operations to be performed on a local database file.
+
+    Functions:
+        - add_item: Adds a new item to the database.
+        - add_multiple_items: Adds multiple new items to the database.
+        - append_dataframe: Appends a pandas DataFrame to the database table.
+        - fetch_all_items: Fetches all items from the database table.
+        - fetch_item_by_id: Fetches an item from the database based on its ID.
+        - fetch_items_by_attribute: Fetches items from the database based on specified attributes.
+        - to_dataframe: Converts the database table to a pandas DataFrame.
+        - update_item: Updates an item in the database based on its ID.
+        - delete_item: Deletes an item from the database based on its ID.
+        - start_session: Starts a new database session.
+        - end_session: Ends the database session and closes the connection.
     '''
 
     def __init__(self, table_class, database_file: DatabaseFile):

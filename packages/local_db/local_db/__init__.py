@@ -5,13 +5,13 @@ local_db_handler
 This package contains modules related to local database connection / creation / deletion / editing / etc.
 
 Modules:
-    - db_connections.py
-    - db_file_handler.py:
-    - local_db.py:
+    - database_connections.py
+    - database_file.py:
+    - database_manager.py:
     - utils.py:
 '''
 # Metadata
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 __author__ = 'Elias Rodkey'
 
 # Configure logging settings
@@ -19,7 +19,8 @@ from loggers import Logger
 from loggers import ELoggingFormats as ELF
 
 # Package Level Constants
-DEFAULT_DB_DIRECTORY = 'data\\dbs'
+import os
+DEFAULT_DB_DIRECTORY = os.path.join(os.getcwd(), 'data', 'dbs')
 
 # Imports modules, functions, and classes for clean package interface
 from .base_table import BaseTable, ESQLDataTypes
