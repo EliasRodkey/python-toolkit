@@ -28,8 +28,8 @@ import sqlite3
 import pytest
 
 # local imports
-from local_db.utils import check_db_exists, is_db_file, map_dtype_to_sql, map_dtype_list_to_sql
-from local_db.utils import Integer, Float, String, Boolean, DateTime, LargeBinary
+from local_db.utils import check_db_exists, is_db_file, map_dtype_to_sql, map_dtype_list_to_sql, orm_list_to_dataframe
+from local_db.utils import Column, Integer, Float, String, Boolean, DateTime, LargeBinary, create_engine
 
 
 # Constants
@@ -97,3 +97,38 @@ def test_is_db_file_false(filename:str):
 def test_map_dtype_to_sql(dtype, expected):
     '''Tests the map_dtype_to_sql function from utils by checking if it correctly maps data types to SQLAlchemy types'''
     assert map_dtype_to_sql(dtype) == expected
+
+
+def test_orm_list_to_dataframe():
+    '''Tests the orm_list_to_dataframe function from utils by checking if it correctly converts a list of ORM objects to a DataFrame'''
+    from sqlalchemy.orm import sessionmaker, declarative_base
+
+    # Define a simple ORM model for testing
+    Base = declarative_base()
+
+    class TestModel(Base):
+        __tablename__ = 'test_model'
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
+
+    # Create an in-memory SQLite database and add test data
+    engine = create_engine('sqlite:///:memory:')
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    # Add test data
+    session.add_all([TestModel(name='Alice'), TestModel(name='Bob')])
+    session.commit()
+
+    # Query the data
+    orm_objects = session.query(TestModel).all()
+
+    # Convert to DataFrame
+    df = orm_list_to_dataframe(orm_objects)
+
+    # Expected DataFrame
+    expected_df = pd.DataFrame({'id': [1, 2], 'name': ['Alice', 'Bob']})
+
+    # Assert DataFrames are equal
+    pd.testing.assert_frame_equal(df, expected_df)

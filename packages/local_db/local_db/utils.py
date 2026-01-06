@@ -12,7 +12,8 @@ Funcitons:
 # Standard library imports
 import os
 import pandas as pd
-from sqlalchemy import Integer, Float, String, Boolean, DateTime, LargeBinary
+from sqlalchemy import Column, Integer, Float, String, Boolean, DateTime, LargeBinary, create_engine
+from sqlalchemy.inspection import inspect
 
 # Initiate module logger
 from . import Logger, ELF, DEFAULT_DB_DIRECTORY
@@ -123,6 +124,23 @@ def map_dtype_list_to_sql(dtype_list):
         A list of corresponding SQLAlchemy types as strings.
     '''
     return [map_dtype_to_sql(dtype) for dtype in dtype_list]
+
+
+def orm_list_to_dataframe(rows):
+    '''
+    Returns a pandas DataFrame from a list of ORM objects
+
+    Args:
+        rows: list of ORM objects (SQLAlchemy model instances, Base subclasses)
+
+    Returns:
+        pd.DataFrame: DataFrame containing the data from the ORM objects
+    '''
+    return pd.DataFrame([
+        {attr.key: getattr(row, attr.key)
+         for attr in inspect(row).mapper.column_attrs}
+        for row in rows
+    ])
 
 
 if __name__ == "__main__":

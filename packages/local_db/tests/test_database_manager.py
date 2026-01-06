@@ -156,7 +156,7 @@ class TestDatabaseManager:
         entry_2_name = clean_database.session.query(MockTableObject).filter_by(name=TEST_ENTRY_2['name']).first().name
         entry_2_age = clean_database.session.query(MockTableObject).filter_by(age=TEST_ENTRY_2['age']).first().age
 
-        query_result = clean_database.fetch_all_items()
+        query_result = clean_database.fetch_all_items(as_dataframe=False)
 
         assert len(query_result) == 2, 'Not all items fetched from the database.'
         assert query_result[0].name == entry_1_name, f'Item 1 name does not match {query_result[0].name}.'
@@ -172,7 +172,7 @@ class TestDatabaseManager:
         clean_database.add_item(**TEST_ENTRY_1)
         clean_database.add_item(**TEST_ENTRY_2)
 
-        item = clean_database.fetch_item_by_id(2)
+        item = clean_database.fetch_item_by_id(2, as_dataframe=False)
 
         assert clean_database.session.query(MockTableObject).filter_by(name=TEST_ENTRY_2['name']).first().name == item.name, 'Item not fetched by ID.'
         assert clean_database.session.query(MockTableObject).filter_by(age=TEST_ENTRY_2['age']).first().age == item.age, 'Item not fetched by ID.'
@@ -187,13 +187,72 @@ class TestDatabaseManager:
         clean_database.add_item(**TEST_ENTRY_2)
         clean_database.add_item(**TEST_ENTRY_3)
 
-        items = clean_database.fetch_items_by_attribute(age=TEST_ENTRY_3['age'])
+        items = clean_database.fetch_items_by_attribute(as_dataframe=False, age=TEST_ENTRY_3['age'])
 
         assert len(items) == 2, 'Items not fetched by attribute.'
         assert items[0].name == TEST_ENTRY_1['name'], f'Item 1 name does not match {items[0].name}.'
         assert items[0].age == TEST_ENTRY_1['age'], f'Item 1 age does not match {items[0].age}.'
         assert items[1].name == TEST_ENTRY_3['name'], f'Item 2 name does not match {items[1].name}.'
         assert items[1].age == TEST_ENTRY_3['age'], f'Item 2 age does not match {items[1].age}.'
+
+    
+    def test_filter_items_single_filter(self, clean_database):
+        '''Tests the filter_items() method of the DatabaseManager class with a single filter'''
+        # Arrange
+        clean_database.add_item(name="coffee", age=4, email="food")
+        clean_database.add_item(name="book", age=12, email="education")
+
+        # Act
+        results = clean_database.filter_items({"email": "food"}, as_dataframe=False)
+
+        # Assert
+        assert len(results) == 1
+        assert results[0].name == "coffee"
+        assert results[0].age == 4
+
+
+    def test_filter_items_multiple_filters(self, clean_database):
+        '''Tests the filter_items() method of the DatabaseManager class with multiple filters'''
+        # Arrange
+        clean_database.add_item(name="book", age=3, email="transportation")
+        clean_database.add_item(name="sandwich", age=8, email="food")
+        clean_database.add_item(name="book", age=10, email="education")
+
+        # Act
+        results = clean_database.filter_items({
+            "name": "book",
+            "age": (">", 5)
+        }, as_dataframe=False)
+
+        # Assert
+        assert len(results) == 1
+        assert results[0].email == "education"
+
+
+    def test_filter_items_no_matches(self, clean_database):
+        '''Tests the filter_items() method of the DatabaseManager class with no matching results'''
+        # Arrange
+        clean_database.add_item(name="coffee", age=3, email="food")
+
+        # Act
+        results = clean_database.filter_items({"email": "transport"}, as_dataframe=False)
+
+        # Assert
+        assert results == []
+
+
+    def test_filter_items_invalid_column_raises(self, clean_database):
+        '''Tests the filter_items() method of the DatabaseManager class with invalid column name'''
+        with pytest.raises(AttributeError):
+            clean_database.filter_items({"nonexistent_column": "value"})
+
+
+    def test_filter_items_invalid_operator_raises(self, clean_database):
+        '''Tests the filter_items() method of the DatabaseManager class with unsupported operator'''
+        clean_database.add_item(name="coffee", age=3, email="food")
+
+        with pytest.raises(ValueError):
+            clean_database.filter_items({"age": ("~=", 5)})
 
 
     def test_to_dataframe(self, clean_database):
@@ -221,7 +280,7 @@ class TestDatabaseManager:
         # Update the item in the database
         clean_database.update_item(1, **TEST_ENTRY_2)
 
-        updated_item = clean_database.fetch_item_by_id(1)
+        updated_item = clean_database.fetch_item_by_id(1, as_dataframe=False)
 
         assert updated_item.name == 'Jane Doe', f'Item name not updated correctly: {updated_item.name}'
         assert updated_item.age == 25, f'Item age not updated correctly: {updated_item.age}'
