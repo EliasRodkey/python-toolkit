@@ -1,5 +1,5 @@
 """
-common.py
+loggers.utils.py
 
 A python module which contains generic functions related to the logger and super_logger classes
 
@@ -15,6 +15,12 @@ Functions:
 
 from datetime import datetime
 from enum import Enum
+import os
+
+# Default directory to store log files
+LOG_FILE_DEFAULT_DIRECTORY: str = os.path.join('data', 'logs')
+PERFORMANCE_LEVEL_NUM = 15
+
 
 
 class ELoggingFormats(str, Enum):
@@ -34,7 +40,7 @@ class ELoggingFormats(str, Enum):
     LOGGER_NAME_BRACKETS = '[%(name)s]'
     MESSAGE = '%(message)s'
 
-    FORMAT_BASIC = f'{ASCTIME} - {LOG_LEVEL} - {MESSAGE}'
+    FORMAT_BASIC = f'{ASCTIME} - {LOGGER_NAME} - {LOG_LEVEL} - {MESSAGE}'
     FORMAT_LOGGER_NAME = f'{ASCTIME} - {LOGGER_NAME} - {LOG_LEVEL} - {MESSAGE}'
     FORMAT_LOGGER_NAME_BRACKETS = f'{ASCTIME} - {LOGGER_NAME_BRACKETS}{LOG_LEVEL_BRACKETS}: {MESSAGE}'
     FORMAT_FUNC_NAME = f'{ASCTIME} {LOG_LEVEL_BRACKETS}{FUNC_NAME_BRACKETS}: {MESSAGE}'
@@ -84,12 +90,3 @@ def compose_global_run_id(run_name: str) -> str:
     """
     time_id = create_log_datetime_stamp()
     return f'{time_id}_{run_name}'
-
-
-if __name__ == "__main__":
-    date = create_datestamp()
-    time = create_timestamp()
-    datetime_stamp = create_log_datetime_stamp()
-    print(date)
-    print(time)
-    print(datetime_stamp)
