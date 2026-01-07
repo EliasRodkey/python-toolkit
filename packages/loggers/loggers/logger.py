@@ -1,5 +1,8 @@
 """
-logger.py
+loggers.logger.py
+
+NOTE: This class is deprecated. After further review it's behavior is redundant to that of the built in logging module.
+Do not use.
 
 Class:
     Logger: a basic logging class for cleanly handling logging for a specific class or module
