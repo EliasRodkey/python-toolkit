@@ -6,9 +6,12 @@ Loggers
 
 Loggers is a modified logging package that is designed to be flexible and modular.
 The package is designed to be used in a generic python project as a way to handle run logs in a
-sophisticated and organized way.
+sophisticated and organized way. While the original package contained a Logger wrapper class,
+the package has been updated to integrate more smoothly with the native logging library.
+The wrapper has been replaced by helper functions to set up log handlers and configurations
 
-Logger: creates and manages logging instances and handlers at a high level
+Logger: logging wrapper for logger handling
+**NOTE: Logger is redundant/depracated. Do not use.**
 
 LogParse: parses log files for errors
 
@@ -18,13 +21,9 @@ PerformanceLogger: tracks program performance (execution time)
 
 - instance versus class attribute management
 - deciding allocation of class versus instance methods
+- generalizing code for use in multiple projects and situaitons
+- machine readable log generation and basic parsing
 - test development
-
-## Dependencies
-
-- logging
-- os
-- typing
 
 ## Logger Usage
 
@@ -78,6 +77,7 @@ common problems and how to fix them
 ## Version History
 
 - 1.0: initial release
+- 1.1: Deprecate Logger class in place of logging setup helper functions.
 
 ## Future Releases
 
