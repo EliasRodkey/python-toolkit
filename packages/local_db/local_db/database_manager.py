@@ -338,9 +338,64 @@ class DatabaseManager():
             _logger.warning(f'DatabaseManager.delete_item() -> Item not found in database: {self.table_class.__tablename__} with ID: {item_id}')
 
     
-    # TODO: Add delete item by other attribute method
+    def delete_items_by_attribute(self, **kwargs):
+        '''
+        Deletes items from the database based on specified attributes.
+        
+        Args:
+            **kwargs: Keyword arguments representing the attributes to filter by. 
+                      Keys should match column names and values should match the column types.
+        '''
+        _logger.debug(f'DatabaseManager.delete_items_by_attribute() -> Deleting items from database: {self.table_class.__tablename__} with attributes: {kwargs}')
 
-    # TODO: Add a method that wipes the entire table
+        # Create a query object to filter items based on the provided attributes
+        query = self.session.query(self.table_class).filter_by(**kwargs)
+
+        # If the query returns results, delete them from the session and commit the changes to the database
+        if query:
+            for item in query.all():
+                self.session.delete(item)
+            self.session.commit()
+            _logger.info(f'Items deleted from database: {self.table_class.__tablename__} with attributes: {kwargs}')
+
+        else:
+            _logger.warning(f'DatabaseManager.delete_items_by_attribute() -> No items found in database: {self.table_class.__tablename__} with attributes: {kwargs}')
+
+
+    def delete_items_by_filter(self, filters: dict, use_or=False):
+        '''
+        Delete items from the database based on specified filters.
+
+        Args:
+            filters (dict): A dictionary where keys are column names and values are tuples of (operator, value).
+                            Supported operators: "==", "!=", ">", ">=", "<", "<=", "in", "like" (See _OPERATOR_MAP).
+            use_or (bool): Whether to combine filters with OR logic instead of AND. Default is False.
+        '''
+
+        _logger.debug(f'DatabaseManager.delete_items_by_filter() -> Deleting items from database: {self.table_class.__tablename__} with filters: {filters}')
+
+        # get items to delete using the filter_items method
+        items_to_delete = self.filter_items(filters, use_or=use_or, as_dataframe=False)
+
+        if items_to_delete != []:
+            for item in items_to_delete:
+                self.session.delete(item)
+            self.session.commit()
+            _logger.info(f'Items deleted from database: {self.table_class.__tablename__} with filters: {filters}. use_or: {use_or}')
+        
+        else:
+            _logger.warning(f'DatabaseManager.delete_items_by_filter() -> No items found in database: {self.table_class.__tablename__} with filters: {filters}. use_or: {use_or}')
+
+
+    def clear_table(self):
+        '''
+        Deletes all items from the database table.
+        '''
+
+        # Delete all items from the database table
+        num_deleted = self.session.query(self.table_class).delete()
+        self.session.commit()
+        _logger.info(f'All items deleted from database table: {self.table_class.__tablename__}, total items deleted: {num_deleted}')
 
 
     def start_session(self):

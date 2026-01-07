@@ -298,6 +298,52 @@ class TestDatabaseManager:
         assert clean_database.session.query(MockTableObject).count() == 0, 'Item not deleted from the database.'
 
     
+    def test_delete_items_by_attribute(self, clean_database):
+        '''Tests the delete_items_by_attribute() method of the DatabaseManager class'''
+
+        # Add multiple items to the database
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        # Delete items by attribute
+        clean_database.delete_items_by_attribute(age=30)
+
+        assert clean_database.session.query(MockTableObject).count() == 1, 'Items not deleted by attribute.'
+        remaining_ages = [item.age for item in clean_database.fetch_all_items(as_dataframe=False)]
+        assert 30 not in remaining_ages, 'Item with specified attribute not deleted.'
+
+    
+    def test_delete_items_by_filter(self, clean_database):
+        '''Tests the delete_items_by_filter() method of the DatabaseManager class'''
+
+        # Add multiple items to the database
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        # Delete items by filter
+        clean_database.delete_items_by_filter({'age': ('>=', 27), 'name': 'John Doe'})
+
+        assert clean_database.session.query(MockTableObject).count() == 2, 'Items not deleted by filter.'
+        remaining_names = [item.name for item in clean_database.fetch_all_items(as_dataframe=False)]
+        assert 'John Doe' not in remaining_names, 'Item with specified filter not deleted.'
+        assert 'Alice Smith' in remaining_names, 'Incorrect item deleted.'
+        
+
+    def test_clear_table(self, clean_database):
+        '''Tests the clear_table() method of the DatabaseManager class'''
+
+        # Add multiple items to the database
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        clean_database.clear_table()
+
+        assert clean_database.session.query(MockTableObject).count() == 0, 'Table not cleared successfully.'
+
+    
     def test_df_columns_match_true(self, clean_database):
         '''Tests if the DataFrame columns match the database table columns'''
 
