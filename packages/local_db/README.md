@@ -9,18 +9,19 @@ creation, reading, editing, and deleting local database files
 
 ## Usage/Examples
 
-1. **Install Package**
+**Install Package**
 Ensure you have access to the github repository
 Run the command:
     pip install git+<https://github.com/EliasRodkey/local_db.git>
 
-2. **Import Package**
+### Import Package
 
 ```python
 From local_db_handler import DatabaseFile, DatabaseManager, BaseTable
 ```
 
-3. **Set Up Table Object**
+### Set Up Table Object
+
 Use the BaseTable class to create a table object that will be connected to using the DatabaseManager
 
 ```python
@@ -61,7 +62,8 @@ __table_args__ = (
 )
 ```
 
-4. **Creating the DataFile**
+### Creating the DataFile
+
 The DatabaseFile object represents the actual file of the database and is required to initialize a DatabaseManager object.
 
 ```python
@@ -80,7 +82,8 @@ file.exists() # Returns boolean, if the file exists
 file.delete() # Deletes the actual db file
 ```
 
-5. **Create DatabaseManager**
+### Create DatabaseManager
+
 The DatabaseManager takes a file and table as arguments and allows for common database operations on that table
 
 ```python
@@ -95,13 +98,17 @@ manager.add_item(entry: dictionary with columns matching the db table class)
 manager.add_multiple_items(entries: list of entries)
 manager.append_dataframe(df: pandas DataFrame with columns that match the db table class)
 
-manager.fetch_all() -> returns all table class instances in the table
-manager.fetch_item_by_id(id: int) -> returns an individual table class instance with data
-manager.fetch_items_by_attribute(**kwargs) -> allows filtering of table by kwargs
-manager.to_dataframe() -> Returns the database as a pandas DataFrame
+manager.fetch_all(as_dataframe=True) -> returns all table class instances in the table
+manager.fetch_item_by_id(id: int, as_dataframe=True) -> returns an individual table class instance with data
+manager.fetch_items_by_attribute(**kwargs, as_dataframe=True) -> allows filtering of table by kwargs
+manager.filter_items(filters: dict, use_or=False, as_dataframe=True) -> allows filtering of database table and reading of filtered items
+manager.to_dataframe() -> Returns the entire database as a pandas DataFrame
 
 manager.update_item(item_id: int, **kwargs) -> updates values kwargs of an item with a given ID
-manager.delete_item(item_id: int)
+manager.delete_item(item_id: int) -> Deletes an item with the given item id
+manager.delete_items_by_attribute(**kwargs) -> Deletes items in a database where column values match kwargs.
+manager.delete_items_by_filter(filters: dict, use_or=False) -> Deletes items in a database where filters apply.
+manager.clear_table() -> Deletes all items in the database table.
 
 manager.start_session() -> initiates when instance initialized
 manager.end_session() -> should be called before exiting program
