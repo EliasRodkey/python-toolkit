@@ -53,15 +53,19 @@ class JSONLogParser():
     Attributes:
         file_path (str): The path to the log file to examine.
     
-    
     Methods:
         load: Loads the json log from the given path. Populates self.records and records metrics.
         filter_by_level(*levels: str): Allows filtering of the log based on the desired logging level.
-        filter_by_time(start_date: datetime | None, end_date: datetime | None): Allows filtering of the log based on a given timeframe.
-        get_extra(record: LogRecord, key: str, default=None): Allows extraction of a key within the extra dictionary if it exists.
+        filter_by_time(start_date: datetime|None, end_date: datetime|None): Allows filtering of the log based on a given timeframe.
+        get_extra(record: LogRecord, key: str, default): Allows extraction of a key within the extra dictionary if it exists.
+        top_messages(n:int): Returns the top n messages and the number of times they occur
+        level_counts: Returns the _level_counts Counter as a dictionary
+        module_counts: Returns the _module_counts Counter as a dictionary
+        func_counts: Returns the _func_counts Counter as a dictionary
+        to_dataframe(List[LogRecord]|None): Converts either the entire self.records or a given list of records to a pandas dataframe.
     """
-
     CORE_FIELDS = [member.value for member in ECoreFields]
+
 
     def __init__(self, file_path: str) -> None:
         """
@@ -152,6 +156,41 @@ class JSONLogParser():
             default: If the key is not in extras of the given LogRecord it returns this value.
         '''
         return record.get("extras", {}).get(key, default)
+    
+
+    def top_messages(self, n: int=10) -> List[tuple[str, int]]:
+        '''Returns the top n messages and the number of times they occur'''
+        counter = Counter(r[ECoreFields.MESSAGE] for r in self.records if ECoreFields.MESSAGE in r)
+        return counter.most_common(n)
+
+
+    def level_counts(self) -> Dict[str, int]:
+        '''Returns the _level_counts Counter as a dictionary'''
+        return dict(self._level_counts)
+    
+
+    def module_counts(self) -> Dict[str, int]:
+        '''Returns the _module_counts Counter as a dictionary'''
+        return dict(self._module_counts)
+    
+
+    def func_counts(self) -> Dict[str, int]:
+        '''Returns the _func_counts Counter as a dictionary'''
+        return dict(self._func_counts)
+    
+
+    def to_dataframe(self, records: List[LogRecord]=None):
+        '''Converts either the entire self.records or a given list of records to a pandas dataframe.'''
+        import pandas as pd
+
+        rows = []
+        records = records if records else self.records
+        for record in records:
+            row = {k: v for k, v in record.items() if k != ECoreFields.EXTRAS}
+            row.update(record.get(ECoreFields.EXTRAS))
+            rows.append(row)
+        
+        return pd.DataFrame(rows)
 
 
     def _normalize(self, raw: dict) -> LogRecord:
@@ -167,7 +206,7 @@ class JSONLogParser():
                 
             # If the raw dictionary is missinng one of the expected fields add it to the record as an empty string
             elif field not in raw:
-                record[field] = ''
+                record[field] = '' if not field == ECoreFields.EXTRAS else {}
             
             # For all other expected fields, add raw to the record
             else:
