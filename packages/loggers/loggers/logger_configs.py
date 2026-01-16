@@ -1,4 +1,4 @@
-'''
+"""
 Docstring for loggers.logger_configs.py
 
 This module contians functions and classes that are used to control  and standardize
@@ -10,7 +10,7 @@ Classes:
 
 Functions:
     configure_logger (logger: logging.Logger): Configures a given logger with prefered handlers and formatting.
-'''
+"""
 # Built in imports
 from datetime import datetime
 import json
@@ -25,15 +25,15 @@ from loggers.utils import ELoggingFormats, LOG_FILE_DEFAULT_DIRECTORY, create_da
 class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         log_record = {
-            'timestamp': datetime.fromtimestamp(record.created).isoformat() + "Z",
-            'level': record.levelname,
-            'logger': record.name,
-            'message': record.getMessage(),
-            'module': record.module,
-            'function': record.funcName,
-            'line': record.lineno,
-            'exception': '',
-            'extra': {}
+            "timestamp": datetime.fromtimestamp(record.created).isoformat() + "Z",
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
+            "exception": "",
+            "extra": {}
         }
 
         if record.exc_info:
@@ -47,7 +47,7 @@ class JSONFormatter(logging.Formatter):
 
 
 class LoggingHandlerController():
-    '''
+    """
     This class is used to ensure that all loggers send their logs to the same files.
     This ensures that all loggers share the same run name and log file paths.
     It creates a daily log folder and run folders within it with unique datetime stamps.
@@ -55,9 +55,9 @@ class LoggingHandlerController():
     It also creates individual readable log file paths and handlers for each unique run name.
 
     Attributes:
-        run_name (str): The name of the run given at instantiation. defaults to 'main'. 
+        run_name (str): The name of the run given at instantiation. defaults to "main". 
                         If the run name already exists, the class returns the same path and handler from the last instance.
-        instance_run_info (dict): A dictionalry with keys 'path' and 'handler' that contain the file path and handler for the readable log of the given run_name.
+        instance_run_info (dict): A dictionalry with keys "path" and "handler" that contain the file path and handler for the readable log of the given run_name.
 
     Properties:
         run_directory (str): The path to the directory that contains all of the log files for the current run.
@@ -66,26 +66,26 @@ class LoggingHandlerController():
         json_file_path (str): The path to the json log file (same for all instances).
         json_file_handler (logging.FileHandler): FileHandler for json log file (same for all instances). 
         stream_handler (logging.StreamHandler): StreamHandler for all instances
-    '''
+    """
     _run_names: dict = {}
-    _daily_log_stamp: str = ''
-    _log_datetime_stamp: str = ''
-    _run_directory: str = ''
-    _json_file_path: str = ''
+    _daily_log_stamp: str = ""
+    _log_datetime_stamp: str = ""
+    _run_directory: str = ""
+    _json_file_path: str = ""
     _json_file_handler: logging.FileHandler = None
     _stream_handler: logging.StreamHandler = None
     _initialized: bool = False
 
     def __new__(cls, run_name: str, text_formatter: logging.Formatter, log_directory: str):
-        '''If this is the first time the class is being instantiated, set up the daily log folder and json log file path.'''
+        """If this is the first time the class is being instantiated, set up the daily log folder and json log file path."""
         if cls._initialized == False:
             cls._daily_log_stamp = create_datestamp() # Daily log folder
             cls._log_datetime_stamp = create_log_datetime_stamp() # Log folder within the daily log folder
             cls._run_directory = os.path.join(log_directory, cls._daily_log_stamp, cls._log_datetime_stamp)
-            os.makedirs(cls._run_directory, exist_ok=True) # Create the run directory if it doesn't exist
+            os.makedirs(cls._run_directory, exist_ok=True) # Create the run directory if it doesn"t exist
 
             # Create the json og file handler (used by all loggers in the run)
-            cls._json_file_path = os.path.join(cls._run_directory, f'{cls._log_datetime_stamp}.json.log')
+            cls._json_file_path = os.path.join(cls._run_directory, f"{cls._log_datetime_stamp}.json.log")
             cls._json_file_handler = logging.FileHandler(cls._json_file_path)
             cls._json_file_handler.setFormatter(JSONFormatter())
 
@@ -100,17 +100,17 @@ class LoggingHandlerController():
 
 
     def __init__(self, run_name: str, text_formatter: logging.Formatter):
-        '''Each time this class is instantiated, check to see if the run name is already in use. If so, use the existing file paths. If not create new.'''
+        """Each time this class is instantiated, check to see if the run name is already in use. If so, use the existing file paths. If not create new."""
         # Access class variables directly from class to avoid accidental reasaignment
         cls = type(self)
         if run_name not in cls._run_names:
             # Create readable file path and handler for new run names
-            readable_file_path = os.path.join(cls._run_directory, f'{cls._log_datetime_stamp}_{run_name}.log')
+            readable_file_path = os.path.join(cls._run_directory, f"{cls._log_datetime_stamp}_{run_name}.log")
             readable_text_handler = logging.FileHandler(readable_file_path)
             readable_text_handler.setFormatter(text_formatter)
             cls._run_names[run_name] = {
-                'path' : readable_file_path,
-                'handler' : readable_text_handler
+                "path" : readable_file_path,
+                "handler" : readable_text_handler
                 }
         
         self.run_name = run_name
@@ -119,48 +119,48 @@ class LoggingHandlerController():
 
     @property
     def run_directory(self) -> str:
-        '''Returns the path to the directory for the log files of the current run as a string'''
+        """Returns the path to the directory for the log files of the current run as a string"""
         return self._run_directory
 
     @property
     def readable_file_path(self) -> str:
-        '''Returns the readable log file path.'''
-        return self.instance_run['path']
+        """Returns the readable log file path."""
+        return self.instance_run["path"]
 
 
     @property
     def readable_file_handler(self) -> logging.FileHandler:
-        '''Returns a file handler for the readable log file path.'''
-        return self.instance_run['handler']
+        """Returns a file handler for the readable log file path."""
+        return self.instance_run["handler"]
 
 
     @property
     def json_file_path(self) -> str:
-        '''Returns the json log file path.'''
+        """Returns the json log file path."""
         return self._json_file_path
     
 
     @property
     def json_file_handler(self) -> logging.FileHandler:
-        '''Returns a file handler for the json log file path.'''
+        """Returns a file handler for the json log file path."""
         return self._json_file_handler
     
 
     @property
     def stream_handler(self) -> logging.StreamHandler:
-        '''Returns the stream handler for standard output.'''
+        """Returns the stream handler for standard output."""
         return self._stream_handler
     
 
 
 def configure_logger(
         logger: logging.Logger, 
-        run_name: str='main', 
+        run_name: str="main", 
         format: ELoggingFormats=ELoggingFormats.FORMAT_BASIC, 
         add_to_stream: bool=True,
         log_direcotry: str=LOG_FILE_DEFAULT_DIRECTORY
         ) -> LoggingHandlerController:
-    '''
+    """
     Configures a given logger with prefered handlers and formatting.
     Includes a stream handler with standard output (level: INFO),
     a file handler with DEBUG level logging to a default log directory,
@@ -169,14 +169,14 @@ def configure_logger(
 
     Args:
         logger (logging.Logger): The logger instance to configure.
-        run_name (str): name for the run. Determines which file handler the logger will output to. defaults to 'main'.
+        run_name (str): name for the run. Determines which file handler the logger will output to. defaults to "main".
         format (ELoggingFormats): a string containing the desired logging output format
         add_to_stream (bool): Whether or not the logger should output to the console
         log_directory (str): the parent folder for all logs, defaults to cwd/data/logs/.
 
     Returns:
         LoggingHandlerController: class that contains handlers and file paths to the log files associated with the current run.
-    '''
+    """
     text_formatter = logging.Formatter(format)
     log_controller = LoggingHandlerController(run_name, text_formatter, add_to_stream, log_direcotry)
 

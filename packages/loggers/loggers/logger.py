@@ -1,7 +1,7 @@
 """
 loggers.logger.py
 
-NOTE: This class is deprecated. After further review it's behavior is redundant to that of the built in logging module.
+NOTE: This class is deprecated. After further review it"s behavior is redundant to that of the built in logging module.
 Do not use.
 
 Class:
@@ -24,9 +24,9 @@ class Logger:
 
     # Initialize instances dictionary
     _instances: Dict = {}
-    LOG_FILE_DEFAULT_DIRECTORY: str = os.path.join('data', 'logs')
+    LOG_FILE_DEFAULT_DIRECTORY: str = os.path.join("data", "logs")
 
-    # Adds logging levels to Logger class so logging library doesn't have to imported every time Logger class is imported
+    # Adds logging levels to Logger class so logging library doesn"t have to imported every time Logger class is imported
     DEBUG = logging.DEBUG
     INFO = logging.INFO
     WARNING = logging.WARNING
@@ -69,7 +69,7 @@ class Logger:
 
         # TODO: make the run name optional so it can be set at the top level and not set after the first instace is created
         # Set the global run ID only once
-        if not hasattr(cls, '_run_id'):
+        if not hasattr(cls, "_run_id"):
             cls._run_id = create_log_datetime_stamp()
 
         cls._instances[name] = instance
@@ -80,10 +80,10 @@ class Logger:
             self, name: str,
             log_file_default_dir: str = LOG_FILE_DEFAULT_DIRECTORY
             ):
-        """Initializes logger variables if it hasn't been initialized yet"""
+        """Initializes logger variables if it hasn"t been initialized yet"""
 
         # Check if the instance has already been initialized to avoid re-initialization
-        if hasattr(self, '_initialized') and self._initialized:
+        if hasattr(self, "_initialized") and self._initialized:
             return
         
         # Initialized instance variables
@@ -91,7 +91,7 @@ class Logger:
         self.name = name
         self.log_file_defaullt_dir = os.path.join(os.path.abspath(os.curdir), log_file_default_dir)
 
-        # Create log file directory if it doesn't exist
+        # Create log file directory if it doesn"t exist
         if not os.path.exists(self.log_file_defaullt_dir):
             os.makedirs(self.log_file_defaullt_dir)
         
@@ -116,7 +116,7 @@ class Logger:
         Retrives the other existing Logger instances from the class variable
 
         Returns:
-            _instances dictionary 'logger_name': (Logger instance)
+            _instances dictionary "logger_name": (Logger instance)
         """
         return cls._instances
     
@@ -193,7 +193,7 @@ class Logger:
 
         # Checks if a handler of the same name already exists to avoid accidental overwritting
         if self._handler_exists(name):
-            self.logger.warn(f'Handler with name {name} already exists in logger {self.name}')
+            self.logger.warn(f"Handler with name {name} already exists in logger {self.name}")
             return
         
         # Configure console hander with given format and logging level
@@ -207,7 +207,7 @@ class Logger:
     
     
     def add_file_handler(
-            self, handler_name: str = 'main',
+            self, handler_name: str = "main",
             level = logging.INFO, 
             format = ELoggingFormats.FORMAT_BASIC,
             ) -> None:
@@ -222,25 +222,25 @@ class Logger:
         
         # Checks if a handler of the same name already exists to avoid accidental overwritting
         if self._handler_exists(handler_name):
-            self.logger.warn(f'Handler with name {handler_name} already exists in logger {self.name}')
+            self.logger.warn(f"Handler with name {handler_name} already exists in logger {self.name}")
             return
 
         # Create the full name of the file, datetime stamp + run name + handler name
-        full_filename = f'{self.run_id}_{handler_name}.log'
+        full_filename = f"{self.run_id}_{handler_name}.log"
 
         # Generate new directory for log file to be stored and create the full file path
         run_id_dir = self._create_run_id_dir()
         file_path = os.path.join(run_id_dir, full_filename)
 
         # Configure console hander with given format and logging level
-        file_handler = logging.FileHandler(filename = file_path, mode = 'a', encoding = 'utf-8')
+        file_handler = logging.FileHandler(filename = file_path, mode = "a", encoding = "utf-8")
         file_handler.setFormatter(logging.Formatter(format))
         file_handler.setLevel(level)
 
         # Adds console handler to the handlers dict and the logger
         self.handlers[handler_name] = file_handler
         self.logger.addHandler(file_handler)
-        self.debug(f'File handler {handler_name} added to logger {self.name} with path: {file_path}')
+        self.debug(f"File handler {handler_name} added to logger {self.name} with path: {file_path}")
 
 
     def join_handler(self, logger_name: str, handler_name: str) -> None:
@@ -275,7 +275,7 @@ class Logger:
             self.logger.removeHandler(self.handlers[handler_name])
             del self.handlers[handler_name]
         else:
-            self.logger.warning(f'remove_handler error: Handler {handler_name} does not exist in logger {self.name}')
+            self.logger.warning(f"remove_handler error: Handler {handler_name} does not exist in logger {self.name}")
 
 
     def clear_todays_logs(self) -> None:
@@ -305,7 +305,7 @@ class Logger:
 
     def _create_todays_log_dir(self) -> bool:
         """
-        Creates a directory in the default logs directory with todays date if it doesn't exist
+        Creates a directory in the default logs directory with todays date if it doesn"t exist
         
         Returns:
             str: the path to todays log directory
@@ -315,7 +315,7 @@ class Logger:
         date_stamp = create_datestamp()
         self.date_dir = os.path.join(self.log_file_defaullt_dir, date_stamp)
         
-        # If the path doesn't exists create the new directory
+        # If the path doesn"t exists create the new directory
         if not os.path.exists(self.date_dir):
             os.makedirs(self.date_dir)
         
@@ -334,7 +334,7 @@ class Logger:
         date_path = self._create_todays_log_dir()
         self.run_dir = os.path.join(date_path, self.run_id)
 
-        # If the path doesn't exists create the new directory
+        # If the path doesn"t exists create the new directory
         if not os.path.exists(self.run_dir):
             os.makedirs(self.run_dir)
         
@@ -427,24 +427,24 @@ if __name__ == "__main__":
     main_logger = Logger("main")
 
     # test file handler functions
-    test_logger.add_file_handler('file_1', level=logging.DEBUG)
-    main_logger.add_file_handler('file_1', level=logging.DEBUG)
+    test_logger.add_file_handler("file_1", level=logging.DEBUG)
+    main_logger.add_file_handler("file_1", level=logging.DEBUG)
 
-    log_file_path = os.path.join(test_logger.run_dir, f'{test_logger.run_id}_file_1.log')
+    log_file_path = os.path.join(test_logger.run_dir, f"{test_logger.run_id}_file_1.log")
 
-    test_logger.debug('debug message')
-    test_logger.info('info message')
-    test_logger.warning('warning message')
+    test_logger.debug("debug message")
+    test_logger.info("info message")
+    test_logger.warning("warning message")
 
     with open(log_file_path, "r") as log_file:
             logs = log_file.read()
             print(logs)
 
-    test_logger.remove_handler('file_1')
+    test_logger.remove_handler("file_1")
 
-    test_logger.debug('debug message')
-    test_logger.info('info message')
-    test_logger.warning('warning message')
+    test_logger.debug("debug message")
+    test_logger.info("info message")
+    test_logger.warning("warning message")
 
     with open(log_file_path, "r") as log_file:
             logs = log_file.read()

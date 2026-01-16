@@ -48,7 +48,7 @@ Add join or remove handlers:
 
 ```python
 logger.add_console_handler(handler_name)
-logger.add_file_handler(handler_name: str = 'main')
+logger.add_file_handler(handler_name: str = "main")
 logger.join_handler(other_logger_name, handler_name)
 logger.remove_hanler(handler_name)
 ```

@@ -1,9 +1,9 @@
-'''
+"""
 loggers.json_log_parser.py
 
 Class:
     JSONLogParser: Class that reads, filters, and interprets a JSON log file.
-'''
+"""
 from collections import Counter
 from datetime import datetime
 from enum import Enum
@@ -16,7 +16,7 @@ from typing import List, Dict, Union, TypedDict, Any
 
 
 class LogRecord(TypedDict, total=False):
-    '''Expected log record json output (see JSONFormatter in loggers.logger_configs)'''
+    """Expected log record json output (see JSONFormatter in loggers.logger_configs)"""
     timestamp: datetime
     level: str
     logger: str
@@ -30,16 +30,16 @@ class LogRecord(TypedDict, total=False):
 
 
 class ECoreFields(str, Enum):
-    '''An Enum class that contains the core fields expected in the JSONLogParser'''
-    TIMESTAMP = 'timestamp'
-    LEVEL = 'level'
-    LOGGER = 'logger'
-    MESSAGE = 'message'
-    MODULE = 'module'
-    FUNCTION = 'function'
-    LINE = 'line'
-    EXCEPTION = 'exception'
-    EXTRAS = 'extras'
+    """An Enum class that contains the core fields expected in the JSONLogParser"""
+    TIMESTAMP = "timestamp"
+    LEVEL = "level"
+    LOGGER = "logger"
+    MESSAGE = "message"
+    MODULE = "module"
+    FUNCTION = "function"
+    LINE = "line"
+    EXCEPTION = "exception"
+    EXTRAS = "extras"
 
     def __str__(self):
         return str(self.value)
@@ -74,9 +74,9 @@ class JSONLogParser():
         Args:
             file_path (str): The path to the log file to examine.
         """
-        if not file_path.endswith('.json.log'):
-            # If the file path isn't to a .log file raise an exception
-            raise ValueError(f'Invalid .log file path supplied to {self.__class__.__name__}: {file_path}')
+        if not file_path.endswith(".json.log"):
+            # If the file path isn"t to a .log file raise an exception
+            raise ValueError(f"Invalid .log file path supplied to {self.__class__.__name__}: {file_path}")
         
         self.file_path = Path(file_path)
         self.records: List[LogRecord] = []
@@ -88,7 +88,7 @@ class JSONLogParser():
 
 
     def load(self) -> None:
-        '''Loads the json log from the given path. Populates self.records and records metrics'''
+        """Loads the json log from the given path. Populates self.records and records metrics"""
         # Open the json log file and iterate over each line, loading json and adding records to the parser.
         with self.path.open() as f:
             for lineno, line in enumerate(f, start=1):
@@ -103,7 +103,7 @@ class JSONLogParser():
 
     
     def filter_by_level(self, *levels: str) -> List[LogRecord]:
-        '''
+        """
         Allows filtering of the log based on the desired logging level.
 
         Args:
@@ -111,12 +111,12 @@ class JSONLogParser():
 
         Returns:
             List[LogRecord]: list of LogRecord typed dicts matching the provided levels
-        '''
+        """
         return [r for r in self.records if r.get(ECoreFields.LEVEL) in levels]
     
 
     def filter_by_time(self, start_date: datetime|None=None, end_date: datetime|None=None) -> List[LogRecord]:
-        '''
+        """
         Allows filtering of the log based on a given timeframe.
 
         Args:
@@ -125,7 +125,7 @@ class JSONLogParser():
 
         Returns:
             List[LogRecord]: list of LogRecord typed dicts matching the provided levels
-        '''
+        """
         def in_range(r: LogRecord) -> bool:
             ts = r.get(ECoreFields.TIMESTAMP)
 
@@ -147,40 +147,40 @@ class JSONLogParser():
     
 
     def get_extra(self, record: LogRecord, key: str, default=None) -> Any:
-        '''
+        """
         Allows extraction of a key within the extra dictionary if it exists.
 
         Args:
             record (LogRecord): LogRecord to extrac informatino from.
             key (str): The key within extras to try.
             default: If the key is not in extras of the given LogRecord it returns this value.
-        '''
+        """
         return record.get("extras", {}).get(key, default)
     
 
     def top_messages(self, n: int=10) -> List[tuple[str, int]]:
-        '''Returns the top n messages and the number of times they occur'''
+        """Returns the top n messages and the number of times they occur"""
         counter = Counter(r[ECoreFields.MESSAGE] for r in self.records if ECoreFields.MESSAGE in r)
         return counter.most_common(n)
 
 
     def level_counts(self) -> Dict[str, int]:
-        '''Returns the _level_counts Counter as a dictionary'''
+        """Returns the _level_counts Counter as a dictionary"""
         return dict(self._level_counts)
     
 
     def module_counts(self) -> Dict[str, int]:
-        '''Returns the _module_counts Counter as a dictionary'''
+        """Returns the _module_counts Counter as a dictionary"""
         return dict(self._module_counts)
     
 
     def func_counts(self) -> Dict[str, int]:
-        '''Returns the _func_counts Counter as a dictionary'''
+        """Returns the _func_counts Counter as a dictionary"""
         return dict(self._func_counts)
     
 
     def to_dataframe(self, records: List[LogRecord]=None):
-        '''Converts either the entire self.records or a given list of records to a pandas dataframe.'''
+        """Converts either the entire self.records or a given list of records to a pandas dataframe."""
         import pandas as pd
 
         rows = []
@@ -194,7 +194,7 @@ class JSONLogParser():
 
 
     def _normalize(self, raw: dict) -> LogRecord:
-        '''Converts a raw json dictionary to a normalized LogRecord typed dict'''
+        """Converts a raw json dictionary to a normalized LogRecord typed dict"""
         record: LogRecord = {}
 
         for field in self.CORE_FIELDS:
@@ -206,7 +206,7 @@ class JSONLogParser():
                 
             # If the raw dictionary is missinng one of the expected fields add it to the record as an empty string
             elif field not in raw:
-                record[field] = '' if not field == ECoreFields.EXTRAS else {}
+                record[field] = "" if not field == ECoreFields.EXTRAS else {}
             
             # For all other expected fields, add raw to the record
             else:
@@ -216,12 +216,12 @@ class JSONLogParser():
     
 
     def _record_metrics(self, record: LogRecord) -> None:
-        '''Adds the information from the provided record to the parsing metrics'''
+        """Adds the information from the provided record to the parsing metrics"""
         self._level_counts[record[ECoreFields.LEVEL]] += 1
         self._module_counts[record[ECoreFields.MODULE]] += 1
         self._func_counts[record[ECoreFields.FUNCTION]] += 1
     
     
     def __repr__(self):
-        return f'{self.__class__.__name__}({os.path.basename(self.file_path)})'
+        return f"{self.__class__.__name__}({os.path.basename(self.file_path)})"
     
