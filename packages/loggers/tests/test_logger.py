@@ -82,7 +82,7 @@ class TestLogger:
         Logger(TEST_LOGGER_NAME_1)
         Logger(TEST_LOGGER_NAME_2, log_file_default_dir="logs")
         
-        assert os.path.exists(os.path.join(os.curdir, "data\\logs"))
+        assert os.path.exists(os.path.join(os.curdir, "data", "logs"))
         assert os.path.exists(os.path.join(os.curdir, "logs"))
 
         # Remove non-standard log directory

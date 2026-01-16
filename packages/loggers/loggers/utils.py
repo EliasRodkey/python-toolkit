@@ -21,6 +21,7 @@ Functions:
 from datetime import datetime
 from enum import Enum
 import os
+import shutil
 
 # Default directory to store log files
 LOG_FILE_DEFAULT_DIRECTORY: str = os.path.join("data", "logs")
@@ -97,11 +98,47 @@ def compose_global_run_id(run_name: str) -> str:
     return f"{time_id}_{run_name}"
 
 
-def get_log_directories(log_direcotry: str=LOG_FILE_DEFAULT_DIRECTORY) -> list[str]:
+def get_log_directories(default_log_directory: str=LOG_FILE_DEFAULT_DIRECTORY) -> list[str]:
     """Returns a list of the direcotry names inside of the default log directory."""
-    contents = os.listdir(log_direcotry)
+    contents = os.listdir(default_log_directory)
 
     return [dir for dir in contents if not os.path.isdir(dir)]
 
-def get_log_files(log_directory: str=LOG_FILE_DEFAULT_DIRECTORY) -> list[str]:
-    """"""
+
+def get_log_files(default_log_directory: str=LOG_FILE_DEFAULT_DIRECTORY) -> dict[str, list[str]]:
+    """
+    Returns a dictionary with the daily log folders as keys 
+    and a list of all of the log file names in the log directory as values.
+    """
+    log_file_dict = {}
+    log_dirs = get_log_directories(default_log_directory)
+
+    # Loop over all directories in the root log directory
+    for dir in log_dirs:
+        current_log_dir = os.path.join(default_log_directory, dir)
+        contents = os.listdir(current_log_dir)
+
+        # Assign list of log file names to daily timestamp
+        log_file_dict[dir] = [file for file in contents if file.endswith(".log")]
+    
+    return log_file_dict
+
+
+def delete_log_directory(directory_name: str, default_log_directory: str=LOG_FILE_DEFAULT_DIRECTORY) -> None:
+    """Deletes the directory and all contained files at the given path"""
+    path = os.path.join(os.getcwd(), default_log_directory, directory_name)
+    if os.path.exists(path):
+        shutil.rmtree(path)
+
+
+def delete_todays_logs(default_log_directory: str=LOG_FILE_DEFAULT_DIRECTORY) -> None:
+    """Deletes the directory that contains todays logs"""
+    todays_log_dir_name = create_datestamp()
+    delete_log_directory(todays_log_dir_name, default_log_directory=default_log_directory)
+
+
+def clear_logs(default_log_directory: str=LOG_FILE_DEFAULT_DIRECTORY) -> None:
+    """Deletes all log directories and files in the default log directory"""
+    log_dirs = get_log_directories(default_log_directory)
+    for dir in log_dirs:
+        delete_log_directory(dir, default_log_directory=default_log_directory)
