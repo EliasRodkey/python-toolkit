@@ -125,7 +125,7 @@ def get_log_files(default_log_directory: str=LOG_FILE_DEFAULT_DIRECTORY) -> dict
 
 
 def delete_log_directory(directory_name: str, default_log_directory: str=LOG_FILE_DEFAULT_DIRECTORY) -> None:
-    """Deletes the directory and all contained files at the given path"""
+    """Deletes the directory and all contained files at the given directory name inside the default log direcotry"""
     path = os.path.join(os.getcwd(), default_log_directory, directory_name)
     if os.path.exists(path):
         shutil.rmtree(path)

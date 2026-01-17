@@ -78,4 +78,30 @@ def test_delete_log_directory(test_logs):
     delete_log_directory(dir_to_delete)
     remaining_dirs = get_log_directories()
     assert dir_to_delete not in remaining_dirs
+
+
+def test_delete_log_directory_not_exist(test_logs):
+    """Tests the deletion of a non existent log in directory doesn't cause errors"""
+    dir_to_delete = "not_a_log_dir"
+
+    try:
+        delete_log_directory(dir_to_delete)
+    except Exception as e:
+        assert False, f"error encountered in test_delete_log_directory_not_exist: {e}"
+
+
+def test_delete_todays_logs(test_logs):
+    """Tests the deletion of todays log directory"""
+    dir_to_delete = create_datestamp()
+
+    delete_todays_logs()
+    remaining_dirs = get_log_directories()
+    assert dir_to_delete not in remaining_dirs
     
+
+def test_clear_logs(test_logs):
+    """Tests the deletion of all logs in log directory"""
+    clear_logs()
+    remaining_dirs = get_log_directories()
+
+    assert remaining_dirs == []
