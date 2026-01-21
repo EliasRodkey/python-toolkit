@@ -149,17 +149,22 @@ def add_performance_level():
     """
     Custom performance logging level for measuring the time different program actions take.
     Adds the performance metrics to the extra dict kwarg as 'time_stamp' and 'performance'.
+    Interesting note, any time this function is called, the module will list "utils" instead of the calling module.
     """
     # Add performance level name to logging library
     logging.addLevelName(PERFORMANCE_LEVEL_NUM, "PERFORMANCE")
 
     # Define performance logging function
     def performance(self, message, *args, **kwargs):
-        """Custom performance logging level for measuring the time different program actions take."""
-        # Check that performance logging level is enabled
         if self.isEnabledFor(PERFORMANCE_LEVEL_NUM):
-
-            self._log(PERFORMANCE_LEVEL_NUM, message, args, **kwargs)
+            stacklevel = kwargs.pop("stacklevel", 1)
+            self._log(
+                PERFORMANCE_LEVEL_NUM,
+                message,
+                args,
+                stacklevel=stacklevel + 1,
+                **kwargs,
+            )
 
     # Set performance function to rool logger class
     logging.Logger.performance = performance

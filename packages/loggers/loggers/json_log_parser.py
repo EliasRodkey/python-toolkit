@@ -8,14 +8,15 @@ from collections import Counter
 from datetime import datetime
 from enum import Enum
 import json
-import logging
 import os
 from pathlib import Path
-from typing import List, Dict, Union, TypedDict, Any
+from typing import List, Dict, TypedDict, Any
+from dataclasses import dataclass
 
 
 
-class LogRecord(TypedDict, total=False):
+@ dataclass
+class LogRecord:
     """Expected log record json output (see JSONFormatter in loggers.logger_configs)"""
     timestamp: datetime
     level: str
@@ -25,7 +26,7 @@ class LogRecord(TypedDict, total=False):
     function: str
     line: str
     exception: str
-    extras: dict[str, Any]
+    extra: dict[str, Any]
 
 
 
@@ -39,7 +40,7 @@ class ECoreFields(str, Enum):
     FUNCTION = "function"
     LINE = "line"
     EXCEPTION = "exception"
-    EXTRAS = "extras"
+    EXTRA = "extra"
 
     def __str__(self):
         return str(self.value)
@@ -78,7 +79,7 @@ class JSONLogParser():
             # If the file path isn"t to a .log file raise an exception
             raise ValueError(f"Invalid .log file path supplied to {self.__class__.__name__}: {file_path}")
         
-        self.file_path = Path(file_path)
+        self.path = Path(file_path)
         self.records: List[LogRecord] = []
 
         # Initialize counters for different logging metrics
@@ -163,17 +164,17 @@ class JSONLogParser():
         counter = Counter(r[ECoreFields.MESSAGE] for r in self.records if ECoreFields.MESSAGE in r)
         return counter.most_common(n)
 
-
+    @property
     def level_counts(self) -> Dict[str, int]:
         """Returns the _level_counts Counter as a dictionary"""
         return dict(self._level_counts)
     
-
+    @property
     def module_counts(self) -> Dict[str, int]:
         """Returns the _module_counts Counter as a dictionary"""
         return dict(self._module_counts)
-    
 
+    @property
     def func_counts(self) -> Dict[str, int]:
         """Returns the _func_counts Counter as a dictionary"""
         return dict(self._func_counts)
@@ -195,7 +196,7 @@ class JSONLogParser():
 
     def _normalize(self, raw: dict) -> LogRecord:
         """Converts a raw json dictionary to a normalized LogRecord typed dict"""
-        record: LogRecord = {}
+        record = {}
 
         for field in self.CORE_FIELDS:
             # Convert the timestamps to datetime objects
@@ -206,20 +207,20 @@ class JSONLogParser():
                 
             # If the raw dictionary is missinng one of the expected fields add it to the record as an empty string
             elif field not in raw:
-                record[field] = "" if not field == ECoreFields.EXTRAS else {}
+                record[field] = "" if not field == ECoreFields.EXTRA else {}
             
             # For all other expected fields, add raw to the record
             else:
                 record[field] = raw[field]
         
-        return record
+        return LogRecord(**record)
     
 
     def _record_metrics(self, record: LogRecord) -> None:
         """Adds the information from the provided record to the parsing metrics"""
-        self._level_counts[record[ECoreFields.LEVEL]] += 1
-        self._module_counts[record[ECoreFields.MODULE]] += 1
-        self._func_counts[record[ECoreFields.FUNCTION]] += 1
+        self._level_counts[record.level] += 1
+        self._module_counts[record.module] += 1
+        self._func_counts[record.function] += 1
     
     
     def __repr__(self):
