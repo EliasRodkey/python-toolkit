@@ -11,15 +11,16 @@ Functions:
     create_timestamp: generates the current time as a string
     create_log_datetime_stamp: combines the date and timestamp for a unique file identifier
     compose_global_run_id: creates an id unique to the program run based on the datetime stamp and a run ID   
-    # NOTE: Not implemented
-    # get_log_directories:
-    # get_log_files:
-    # clear_daily_logs:
-    # clear_logs:
+    get_log_directories: Returns a list of the direcotry names inside of the default log directory.
+    get_log_files:Returns a dictionary with the daily log folders as keys and a list of all of the log file names in the log directory as values.
+    delete_log_directory: Deletes the directory and all contained files at the given directory name inside the default log direcotry
+    delete_todays_logs: Deletes the directory that contains todays logs
+    clear_logs: Deletes all log directories and files in the default log directory
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
+import logging
 import os
 import shutil
 
@@ -142,3 +143,23 @@ def clear_logs(default_log_directory: str=LOG_FILE_DEFAULT_DIRECTORY) -> None:
     log_dirs = get_log_directories(default_log_directory)
     for dir in log_dirs:
         delete_log_directory(dir, default_log_directory=default_log_directory)
+
+
+def add_performance_level():
+    """
+    Custom performance logging level for measuring the time different program actions take.
+    Adds the performance metrics to the extra dict kwarg as 'time_stamp' and 'performance'.
+    """
+    # Add performance level name to logging library
+    logging.addLevelName(PERFORMANCE_LEVEL_NUM, "PERFORMANCE")
+
+    # Define performance logging function
+    def performance(self, message, *args, **kwargs):
+        """Custom performance logging level for measuring the time different program actions take."""
+        # Check that performance logging level is enabled
+        if self.isEnabledFor(PERFORMANCE_LEVEL_NUM):
+
+            self._log(PERFORMANCE_LEVEL_NUM, message, args, **kwargs)
+
+    # Set performance function to rool logger class
+    logging.Logger.performance = performance

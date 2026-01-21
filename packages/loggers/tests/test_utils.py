@@ -25,7 +25,7 @@ TEST_LOG_DIRECTORIES = {
     create_datestamp(): [f"{compose_global_run_id('main')}.log", f"{compose_global_run_id('thread_2')}.log", f"{compose_global_run_id('json')}.json.log"]
     }
 
-@pytest.fixture(autouse=True)
+@pytest.fixture()
 def test_logs():
     """Fixture to create fresh log file structure before each test"""
     

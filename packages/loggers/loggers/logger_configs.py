@@ -22,9 +22,32 @@ from loggers.utils import ELoggingFormats, LOG_FILE_DEFAULT_DIRECTORY, create_da
 
 
 
+class StructuredLogger(logging.Logger):
+    def makeRecord(
+        self,
+        name,
+        level,
+        fn,
+        lno,
+        msg,
+        args,
+        exc_info,
+        func=None,
+        extra=None,
+        sinfo=None,
+    ):
+        record = super().makeRecord(
+            name, level, fn, lno, msg, args, exc_info, func, extra, sinfo
+        )
+
+        record.context = extra or {}
+        return record
+
+
+
 class JSONFormatter(logging.Formatter):
-    def format(self, record: logging.LogRecord) -> str:
-        log_record = {
+    def format(self, record):
+        return json.dumps({
             "timestamp": datetime.fromtimestamp(record.created).isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
@@ -32,17 +55,9 @@ class JSONFormatter(logging.Formatter):
             "module": record.module,
             "function": record.funcName,
             "line": record.lineno,
-            "exception": "",
-            "extra": {}
-        }
-
-        if record.exc_info:
-            log_record["exception"] = self.formatException(record.exc_info)
-
-        if hasattr(record, "extra"):
-            log_record["extra"] = record.extra
-
-        return json.dumps(log_record)
+            "exception": self.formatException(record.exc_info) if record.exc_info else "",
+            "extra": getattr(record, "context", {}),
+        })
 
 
 
@@ -66,6 +81,7 @@ class LoggingHandlerController():
         json_file_path (str): The path to the json log file (same for all instances).
         json_file_handler (logging.FileHandler): FileHandler for json log file (same for all instances). 
         stream_handler (logging.StreamHandler): StreamHandler for all instances
+        handlers (dict): A dictionary of the handlers handled by this class
     """
     _run_names: dict = {}
     _daily_log_stamp: str = ""
@@ -82,12 +98,13 @@ class LoggingHandlerController():
             cls._daily_log_stamp = create_datestamp() # Daily log folder
             cls._log_datetime_stamp = create_log_datetime_stamp() # Log folder within the daily log folder
             cls._run_directory = os.path.join(log_directory, cls._daily_log_stamp, cls._log_datetime_stamp)
-            os.makedirs(cls._run_directory, exist_ok=True) # Create the run directory if it doesn"t exist
-
+            os.makedirs(cls._run_directory, exist_ok=True) # Create the run directory if it doesn't exist
+            
             # Create the json og file handler (used by all loggers in the run)
             cls._json_file_path = os.path.join(cls._run_directory, f"{cls._log_datetime_stamp}.json.log")
             cls._json_file_handler = logging.FileHandler(cls._json_file_path)
             cls._json_file_handler.setFormatter(JSONFormatter())
+            cls._json_file_handler.setLevel(logging.DEBUG)
 
             # Create the stream handler (used by all loggers unless specified otherwise) sets level to INFO
             cls._stream_handler = logging.StreamHandler()
@@ -96,10 +113,12 @@ class LoggingHandlerController():
 
             cls._initialized = True
         
+        os.makedirs(cls._run_directory, exist_ok=True) # Create the run directory if it doesn't exist
+        
         return super(LoggingHandlerController, cls).__new__(cls)
 
 
-    def __init__(self, run_name: str, text_formatter: logging.Formatter):
+    def __init__(self, run_name: str, text_formatter: logging.Formatter, log_directory: str):
         """Each time this class is instantiated, check to see if the run name is already in use. If so, use the existing file paths. If not create new."""
         # Access class variables directly from class to avoid accidental reasaignment
         cls = type(self)
@@ -108,13 +127,14 @@ class LoggingHandlerController():
             readable_file_path = os.path.join(cls._run_directory, f"{cls._log_datetime_stamp}_{run_name}.log")
             readable_text_handler = logging.FileHandler(readable_file_path)
             readable_text_handler.setFormatter(text_formatter)
+            readable_text_handler.setLevel(logging.DEBUG)
             cls._run_names[run_name] = {
                 "path" : readable_file_path,
                 "handler" : readable_text_handler
                 }
         
         self.run_name = run_name
-        self.instance_run_info = self._run_names[run_name]
+        self.instance_run_info = cls._run_names[run_name]
     
 
     @property
@@ -125,13 +145,13 @@ class LoggingHandlerController():
     @property
     def readable_file_path(self) -> str:
         """Returns the readable log file path."""
-        return self.instance_run["path"]
+        return self.instance_run_info["path"]
 
 
     @property
     def readable_file_handler(self) -> logging.FileHandler:
         """Returns a file handler for the readable log file path."""
-        return self.instance_run["handler"]
+        return self.instance_run_info["handler"]
 
 
     @property
@@ -150,6 +170,17 @@ class LoggingHandlerController():
     def stream_handler(self) -> logging.StreamHandler:
         """Returns the stream handler for standard output."""
         return self._stream_handler
+
+
+    @property
+    def handlers(self) -> dict[str, logging.Handler]:
+        """Returns a dictionary of the handlers handled by this class"""
+        cls = type(self)
+        return {
+            "json" : self.json_file_handler,
+            "readable" : {name: run["handler"] for name, run in cls._run_names.items()},
+            "stream" : self.stream_handler
+        }
     
 
 
@@ -178,7 +209,10 @@ def configure_logger(
         LoggingHandlerController: class that contains handlers and file paths to the log files associated with the current run.
     """
     text_formatter = logging.Formatter(format)
-    log_controller = LoggingHandlerController(run_name, text_formatter, add_to_stream, log_direcotry)
+    log_controller = LoggingHandlerController(run_name, text_formatter, log_direcotry)
+
+    # Set the default logger level to DEBUG
+    logger.setLevel(logging.DEBUG)
 
     # Add handlers to the logger
     logger.addHandler(log_controller.readable_file_handler)
