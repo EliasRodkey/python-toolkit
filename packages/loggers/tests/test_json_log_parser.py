@@ -107,4 +107,145 @@ class TestJSONLogParser:
         func_counts = log_parser.func_counts
         pprint(func_counts)
         assert func_counts["test_json_log_parsing"] == 14
+    
 
+    def test_filter_by_level(self, test_json_log_parsing):
+        """Tests filtering log records by level"""
+        logger, log_controller, log_parser = test_json_log_parsing
+
+        log_parser.load()
+
+        debug_logs = log_parser.filter_by_level("DEBUG")
+        assert len(debug_logs) == 4
+        for record in debug_logs:
+            assert record.level == "DEBUG"
+
+        performance_info_warning_logs = log_parser.filter_by_level("PERFORMANCE", "INFO", "WARNING")
+        assert len(performance_info_warning_logs) == 7
+        for record in performance_info_warning_logs:
+            assert record.level in ["PERFORMANCE", "INFO", "WARNING"]
+
+        error_logs = log_parser.filter_by_level("ERROR")
+        assert len(error_logs) == 2
+        for record in error_logs:
+            assert record.level == "ERROR"
+        
+        warning_and_critical_logs = log_parser.filter_by_level("WARNING", "CRITICAL")
+        assert len(warning_and_critical_logs) == 3
+        for record in warning_and_critical_logs:
+            assert record.level in ["WARNING", "CRITICAL"]
+    
+
+    def test_filter_by_time(self, test_json_log_parsing):
+        """Tests filtering log records by time"""
+        logger, log_controller, log_parser = test_json_log_parsing
+
+        log_parser.load()
+
+        all_logs = log_parser.filter_by_time()
+        assert len(all_logs) == 14
+
+        first_half_logs = log_parser.filter_by_time(end_date=all_logs[6].timestamp)
+
+        assert len(first_half_logs) == 7
+        for record in first_half_logs:
+            assert record.timestamp <= all_logs[6].timestamp
+
+        second_half_logs = log_parser.filter_by_time(start_date=all_logs[7].timestamp)
+        assert len(second_half_logs) == 7
+        for record in second_half_logs:
+            assert record.timestamp >= all_logs[7].timestamp
+
+        middle_logs = log_parser.filter_by_time(start_date=all_logs[4].timestamp, end_date=all_logs[9].timestamp)
+        assert len(middle_logs) == 6
+        for record in middle_logs:
+            assert all_logs[4].timestamp <= record.timestamp <= all_logs[9].timestamp
+        
+        no_logs = log_parser.filter_by_time(start_date=all_logs[-1].timestamp, end_date=all_logs[0].timestamp)
+        assert len(no_logs) == 0
+    
+
+    def test_get_extra(self, test_json_log_parsing):
+        """Tests getting extra fields from log records"""
+        logger, log_controller, log_parser = test_json_log_parsing
+
+        log_parser.load()
+
+        records = log_parser.records
+
+        debug1_extra = log_parser.get_extra(records[0], "debug_num")
+        assert debug1_extra == 1
+
+        warning_code_extra = log_parser.get_extra(records[2], "warning_code")
+        assert warning_code_extra == 1234
+
+        func_status_extra = log_parser.get_extra(records[10], "func_status")
+        assert func_status_extra == "FAIL"
+
+        missing_extra = log_parser.get_extra(records[1], "non_existent_key", default="DEFAULT_VALUE")
+        assert missing_extra == "DEFAULT_VALUE"
+
+    
+    def test_filter_by_extra(self, test_json_log_parsing):
+        """Tests filtering log records by extra fields"""
+        logger, log_controller, log_parser = test_json_log_parsing
+
+        log_parser.load()
+
+        debug_logs = log_parser.filter_by_extra("debug_num")
+        assert len(debug_logs) == 4
+        assert debug_logs[1].message == "This is a second debug message"
+
+        func_fail_logs = log_parser.filter_by_extra("func_status")
+        assert len(func_fail_logs) == 1
+        assert func_fail_logs[0].message == "Failed tricky thingy!"
+
+        no_logs_with_extra = log_parser.filter_by_extra("non_existent_key")
+        assert len(no_logs_with_extra) == 0
+        assert type(no_logs_with_extra) == list
+    
+
+    def test_get_records_by_id(self, test_json_log_parsing):
+        """Tests getting log records by their assigned ID"""
+        logger, log_controller, log_parser = test_json_log_parsing
+
+        log_parser.load()
+
+        for i in range(14):
+            record = log_parser.get_records_by_id(i)
+            assert record.id == i
+            assert type(record) == LogRecord
+        
+        records = log_parser.get_records_by_id([0, 12, 3, 14])
+        assert records[0].message == "Something is happening behind the scenes..."
+        assert records[1].message == "This is a second debug message"
+        assert records[2].message == "FINALY FUNCTION PERFORMANCE"
+        assert type(records) == list
+
+        with pytest.raises(ValueError):
+            log_parser.get_records_by_id("13")
+
+    
+    def test_to_dataframe(self, test_json_log_parsing):
+        """Tests converting log records to pandas dataframe"""
+        import pandas as pd
+
+        logger, log_controller, log_parser = test_json_log_parsing
+
+        log_parser.load()
+
+        df_all = log_parser.to_dataframe()
+        assert type(df_all) == pd.DataFrame
+        assert len(df_all) == 14
+        assert "level" in df_all.columns
+        assert "message" in df_all.columns
+        assert "timestamp" in df_all.columns
+        assert "extra" not in df_all.columns
+        assert "debug_num" in df_all.columns
+
+        filtered_logs = log_parser.filter_by_level("ERROR", "CRITICAL")
+        df_filtered = log_parser.to_dataframe(filtered_logs)
+        assert type(df_filtered) == pd.DataFrame
+        assert len(df_filtered) == 3
+        for level in df_filtered["level"]:
+            assert level in ["ERROR", "CRITICAL"]

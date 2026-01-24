@@ -91,6 +91,7 @@ class JSONLogParser():
     def load(self) -> None:
         """Loads the json log from the given path. Populates self.records and records metrics"""
         # Open the json log file and iterate over each line, loading json and adding records to the parser.
+        record_id = 0
         with self.path.open() as f:
             for lineno, line in enumerate(f, start=1):
                 line = line.strip()
@@ -99,6 +100,8 @@ class JSONLogParser():
 
                 raw = json.loads(line)
                 record = self._normalize(raw)
+                record.id = record_id
+                record_id += 1
                 self.records.append(record)
                 self._record_metrics(record)
 
@@ -113,7 +116,7 @@ class JSONLogParser():
         Returns:
             List[LogRecord]: list of LogRecord typed dicts matching the provided levels
         """
-        return [r for r in self.records if r.get(ECoreFields.LEVEL) in levels]
+        return [r for r in self.records if r.level in levels]
     
 
     def filter_by_time(self, start_date: datetime|None=None, end_date: datetime|None=None) -> List[LogRecord]:
@@ -121,14 +124,14 @@ class JSONLogParser():
         Allows filtering of the log based on a given timeframe.
 
         Args:
-            start_date (datetime | None)
-            end_date (datetime | None)
+            start_date (datetime | None): The time to start filtering from (only select records after this time)
+            end_date (datetime | None): The time to end filtering at (only select records before this time)
 
         Returns:
             List[LogRecord]: list of LogRecord typed dicts matching the provided levels
         """
         def in_range(r: LogRecord) -> bool:
-            ts = r.get(ECoreFields.TIMESTAMP)
+            ts = r.timestamp
 
             # If there is no timestamp, exclude
             if not ts:
@@ -139,7 +142,7 @@ class JSONLogParser():
                 return False
 
             # If there is an end date provided and the given record is later, exclude.
-            if end_date and ts < end_date:
+            if end_date and ts > end_date:
                 return False
             
             return True
@@ -156,12 +159,54 @@ class JSONLogParser():
             key (str): The key within extras to try.
             default: If the key is not in extras of the given LogRecord it returns this value.
         """
-        return record.get("extras", {}).get(key, default)
+        return record.extra.get(key, default)
     
+
+    def filter_by_extra(self, key: str) -> List[LogRecord]:
+        """
+        Returns all LogRecords that contain the given key within their extras dictionary.
+
+        Args:
+            key (str): The key within extras to try.
+
+        Returns:
+            List[LogRecord]: list of LogRecord typed dicts containing the given key in their extras
+        """
+        return [r for r in self.records if key in r.extra]
+    
+
+    def get_records_by_id(self, record_id: int | list[int]) -> LogRecord | list[LogRecord] | None:
+        """
+        Returns the LogRecord(s) with the given record ID(s). 
+        Will reorder the records in the order they were loaded.
+
+        Args:
+            record_id (int | list[int]): The record ID or list of record IDs to retrieve.
+
+        Returns:
+            LogRecord | list[LogRecord] | None: The LogRecord with the given ID, a list of LogRecords with the given IDs, or None if not found.
+        """
+        if not isinstance(record_id, (int, list)):
+            raise ValueError("record_id must be an int or a list of ints")
+        
+        found_records = []
+
+        for record in self.records:
+            if isinstance(record_id, int):
+                if record.id == record_id:
+                    found_records.append(record)
+                    break
+            
+            elif isinstance(record_id, list):
+                if record.id in record_id:
+                    found_records.append(record)
+                    
+        return found_records if isinstance(record_id, list) else (found_records[0] if found_records else None)
+
 
     def top_messages(self, n: int=10) -> List[tuple[str, int]]:
         """Returns the top n messages and the number of times they occur"""
-        counter = Counter(r[ECoreFields.MESSAGE] for r in self.records if ECoreFields.MESSAGE in r)
+        counter = Counter(r.message for r in self.records if ECoreFields.MESSAGE in r and r.message != "")
         return counter.most_common(n)
 
     @property
@@ -187,8 +232,8 @@ class JSONLogParser():
         rows = []
         records = records if records else self.records
         for record in records:
-            row = {k: v for k, v in record.items() if k != ECoreFields.EXTRAS}
-            row.update(record.get(ECoreFields.EXTRAS))
+            row = {k: v for k, v in record.__dict__.items() if k != ECoreFields.EXTRA}
+            row.update(record.extra)
             rows.append(row)
         
         return pd.DataFrame(rows)
