@@ -1,7 +1,7 @@
 """
 loggers.utils.py
 
-A python module which contains generic functions related to the logger and super_logger classes
+A python module which contains generic functions related logging and log file management.
 
 Class:
     ELoggingFormats: an Enum class which stores different formatting strings for logger formatting
@@ -16,6 +16,7 @@ Functions:
     delete_log_directory: Deletes the directory and all contained files at the given directory name inside the default log direcotry
     delete_todays_logs: Deletes the directory that contains todays logs
     clear_logs: Deletes all log directories and files in the default log directory
+    add_performance_level: Adds a custom performance logging level to the logging module
 """
 
 from datetime import datetime, timedelta

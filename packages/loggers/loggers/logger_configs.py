@@ -5,6 +5,7 @@ This module contians functions and classes that are used to control  and standar
 logger configurations across modules and projects.
 
 Classes:
+    StructuredLogger: A custom logger class that adds an 'extra' context dictionary to log records.
     JSONFormatter: A custom logging formatter that outputs logs in JSON format.
     LogFileNameController: A singleton like class that manages log file names and paths to ensure consistency across loggers.
 

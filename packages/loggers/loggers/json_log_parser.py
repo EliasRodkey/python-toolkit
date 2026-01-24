@@ -1,7 +1,11 @@
 """
 loggers.json_log_parser.py
 
-Class:
+A module that contains the JSONLogParser class for reading and interpreting JSON log files.
+
+Classes:
+    LogRecord: A dataclass representing a single log record.
+    ECoreFields: An Enum class that contains the core fields expected in the JSONLogParser
     JSONLogParser: Class that reads, filters, and interprets a JSON log file.
 """
 from collections import Counter
@@ -52,17 +56,22 @@ class JSONLogParser():
     Class that reads, filters, and interprets a JSON log file.
 
     Attributes:
-        file_path (str): The path to the log file to examine.
+        path (str): The path to the log file to examine.
+        records (List[LogRecord]): A list of LogRecord typed dicts representing each log entry. (only available after load() is called)
+    
+    Properties:
+        level_counts: Returns the _level_counts Counter as a dictionary
+        module_counts: Returns the _module_counts Counter as a dictionary
+        func_counts: Returns the _func_counts Counter as a dictionary
     
     Methods:
         load: Loads the json log from the given path. Populates self.records and records metrics.
         filter_by_level(*levels: str): Allows filtering of the log based on the desired logging level.
         filter_by_time(start_date: datetime|None, end_date: datetime|None): Allows filtering of the log based on a given timeframe.
         get_extra(record: LogRecord, key: str, default): Allows extraction of a key within the extra dictionary if it exists.
+        filter_by_extra(key: str): Returns all LogRecords that contain the given key within their extras dictionary.
+        get_records_by_id(record_id: int | list[int]): Returns the LogRecord(s) with the given record ID(s).
         top_messages(n:int): Returns the top n messages and the number of times they occur
-        level_counts: Returns the _level_counts Counter as a dictionary
-        module_counts: Returns the _module_counts Counter as a dictionary
-        func_counts: Returns the _func_counts Counter as a dictionary
         to_dataframe(List[LogRecord]|None): Converts either the entire self.records or a given list of records to a pandas dataframe.
     """
     CORE_FIELDS = [member.value for member in ECoreFields]
@@ -277,7 +286,7 @@ class JSONLogParser():
         self._level_counts = Counter()
         self._module_counts = Counter()
         self._func_counts = Counter()
-        
+
     
     
     def __repr__(self):

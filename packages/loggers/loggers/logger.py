@@ -15,6 +15,7 @@ from typing import Dict
 from loggers.utils import ELoggingFormats, create_datestamp, create_log_datetime_stamp, compose_global_run_id
 
 
+raise DeprecationWarning("The Logger class is deprecated and will be removed in future versions. Please use the LogHandlerController, configure_logger, and JSONLogParser instead.")
 
 class Logger:
     """
