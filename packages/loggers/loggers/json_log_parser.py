@@ -1,0 +1,294 @@
+"""
+loggers.json_log_parser.py
+
+A module that contains the JSONLogParser class for reading and interpreting JSON log files.
+
+Classes:
+    LogRecord: A dataclass representing a single log record.
+    ECoreFields: An Enum class that contains the core fields expected in the JSONLogParser
+    JSONLogParser: Class that reads, filters, and interprets a JSON log file.
+"""
+from collections import Counter
+from datetime import datetime, timedelta
+from enum import Enum
+import json
+import os
+from pathlib import Path
+from typing import List, Dict, TypedDict, Any
+from dataclasses import dataclass
+
+
+
+@ dataclass
+class LogRecord:
+    """Expected log record json output (see JSONFormatter in loggers.logger_configs)"""
+    timestamp: datetime
+    level: str
+    logger: str
+    message: str
+    module: str
+    function: str
+    line: str
+    exception: str
+    extra: dict[str, Any]
+
+
+
+class ECoreFields(str, Enum):
+    """An Enum class that contains the core fields expected in the JSONLogParser"""
+    TIMESTAMP = "timestamp"
+    LEVEL = "level"
+    LOGGER = "logger"
+    MESSAGE = "message"
+    MODULE = "module"
+    FUNCTION = "function"
+    LINE = "line"
+    EXCEPTION = "exception"
+    EXTRA = "extra"
+
+    def __str__(self):
+        return str(self.value)
+
+
+
+class JSONLogParser():
+    """
+    Class that reads, filters, and interprets a JSON log file.
+
+    Attributes:
+        path (str): The path to the log file to examine.
+        records (List[LogRecord]): A list of LogRecord typed dicts representing each log entry. (only available after load() is called)
+    
+    Properties:
+        level_counts: Returns the _level_counts Counter as a dictionary
+        module_counts: Returns the _module_counts Counter as a dictionary
+        func_counts: Returns the _func_counts Counter as a dictionary
+    
+    Methods:
+        load: Loads the json log from the given path. Populates self.records and records metrics.
+        filter_by_level(*levels: str): Allows filtering of the log based on the desired logging level.
+        filter_by_time(start_date: datetime|None, end_date: datetime|None): Allows filtering of the log based on a given timeframe.
+        get_extra(record: LogRecord, key: str, default): Allows extraction of a key within the extra dictionary if it exists.
+        filter_by_extra(key: str): Returns all LogRecords that contain the given key within their extras dictionary.
+        get_records_by_id(record_id: int | list[int]): Returns the LogRecord(s) with the given record ID(s).
+        top_messages(n:int): Returns the top n messages and the number of times they occur
+        to_dataframe(List[LogRecord]|None): Converts either the entire self.records or a given list of records to a pandas dataframe.
+    """
+    CORE_FIELDS = [member.value for member in ECoreFields]
+
+
+    def __init__(self, file_path: str) -> None:
+        """
+        Initializes an instance of LogParser.
+
+        Args:
+            file_path (str): The path to the log file to examine.
+        """
+        if not file_path.endswith(".json.log"):
+            # If the file path isn"t to a .log file raise an exception
+            raise ValueError(f"Invalid .log file path supplied to {self.__class__.__name__}: {file_path}")
+        
+        self.path = Path(file_path)
+        self.records: List[LogRecord] = []
+
+        # Initialize counters for different logging metrics
+        self._level_counts = Counter()
+        self._module_counts = Counter()
+        self._func_counts = Counter()
+
+
+    def load(self) -> None:
+        """Loads the json log from the given path. Populates self.records and records metrics. Wipes any existing records and metrics."""
+        # Open the json log file and iterate over each line, loading json and adding records to the parser.
+        self._reset()
+        record_id = 0
+        with self.path.open() as f:
+            for lineno, line in enumerate(f, start=1):
+                line = line.strip()
+                if not line:
+                    continue
+
+                raw = json.loads(line)
+                record = self._normalize(raw)
+                record.id = record_id
+                record_id += 1
+                self.records.append(record)
+                self._record_metrics(record)
+
+    
+    def filter_by_level(self, *levels: str) -> List[LogRecord]:
+        """
+        Allows filtering of the log based on the desired logging level.
+
+        Args:
+            levels (str | List[str]): The desired levels to filter
+
+        Returns:
+            List[LogRecord]: list of LogRecord typed dicts matching the provided levels
+        """
+        return [r for r in self.records if r.level in levels]
+    
+
+    def filter_by_time(self, start_date: datetime|None=None, end_date: datetime|None=None) -> List[LogRecord]:
+        """
+        Allows filtering of the log based on a given timeframe.
+
+        Args:
+            start_date (datetime | None): The time to start filtering from (only select records after this time)
+            end_date (datetime | None): The time to end filtering at (only select records before this time)
+
+        Returns:
+            List[LogRecord]: list of LogRecord typed dicts matching the provided levels
+        """
+        def in_range(r: LogRecord) -> bool:
+            ts = r.timestamp
+
+            # If there is no timestamp, exclude
+            if not ts:
+                return False
+            
+            # If there is a start date provided and the given record is earlier, exclude.
+            if start_date and ts < start_date:
+                return False
+
+            # If there is an end date provided and the given record is later, exclude.
+            if end_date and ts > end_date:
+                return False
+            
+            return True
+        
+        return [r for r in self.records if in_range(r)]
+
+
+    def get_extra(self, record: LogRecord, key: str, default=None) -> Any:
+        """
+        Allows extraction of a key within the extra dictionary if it exists.
+
+        Args:
+            record (LogRecord): LogRecord to extrac informatino from.
+            key (str): The key within extras to try.
+            default: If the key is not in extras of the given LogRecord it returns this value.
+        """
+        return record.extra.get(key, default)
+    
+
+    def filter_by_extra(self, key: str) -> List[LogRecord]:
+        """
+        Returns all LogRecords that contain the given key within their extras dictionary.
+
+        Args:
+            key (str): The key within extras to try.
+
+        Returns:
+            List[LogRecord]: list of LogRecord typed dicts containing the given key in their extras
+        """
+        return [r for r in self.records if key in r.extra]
+    
+
+    def get_records_by_id(self, record_id: int | list[int]) -> LogRecord | list[LogRecord] | None:
+        """
+        Returns the LogRecord(s) with the given record ID(s). 
+        Will reorder the records in the order they were loaded.
+
+        Args:
+            record_id (int | list[int]): The record ID or list of record IDs to retrieve.
+
+        Returns:
+            LogRecord | list[LogRecord] | None: The LogRecord with the given ID, a list of LogRecords with the given IDs, or None if not found.
+        """
+        # Make sure record_id is of the expected type
+        if not isinstance(record_id, (int, list)):
+            raise ValueError("record_id must be an int or a list of ints")
+        
+        # Iterate through the records once to find mathcing IDs
+        found_records = []
+        for record in self.records:
+            if isinstance(record_id, int):
+                if record.id == record_id:
+                    found_records.append(record)
+                    break
+            
+            elif isinstance(record_id, list):
+                if record.id in record_id:
+                    found_records.append(record)
+        
+        # Return either a single record, a list of records, or None
+        return found_records if isinstance(record_id, list) else (found_records[0] if found_records else None)
+
+
+    def top_messages(self, n: int=10) -> List[tuple[str, int]]:
+        """Returns the top n messages and the number of times they occur, If none occur multiple times, returns first n messages"""
+        counter = Counter(r.message for r in self.records if ECoreFields.MESSAGE in r.__dict__ and r.message != "")
+        return counter.most_common(n)
+
+    @property
+    def level_counts(self) -> Dict[str, int]:
+        """Returns the _level_counts Counter as a dictionary"""
+        return dict(self._level_counts)
+    
+    @property
+    def module_counts(self) -> Dict[str, int]:
+        """Returns the _module_counts Counter as a dictionary"""
+        return dict(self._module_counts)
+
+    @property
+    def func_counts(self) -> Dict[str, int]:
+        """Returns the _func_counts Counter as a dictionary"""
+        return dict(self._func_counts)
+    
+
+    def to_dataframe(self, records: List[LogRecord]=None):
+        """Converts either the entire self.records or a given list of records to a pandas dataframe."""
+        import pandas as pd
+
+        rows = []
+        records = records if records else self.records
+        for record in records:
+            row = {k: v for k, v in record.__dict__.items() if k != ECoreFields.EXTRA}
+            row.update(record.extra) # Flatten extra dict into new columns
+            rows.append(row)
+        
+        return pd.DataFrame(rows)
+
+
+    def _normalize(self, raw: dict) -> LogRecord:
+        """Converts a raw json dictionary to a normalized LogRecord typed dict"""
+        record = {}
+
+        for field in self.CORE_FIELDS:
+            # Convert the timestamps to datetime objects
+            if field == ECoreFields.TIMESTAMP:
+                record["timestamp"] = datetime.fromisoformat(
+                raw["timestamp"].replace("Z", "+00:00")
+            )
+                
+            # If the raw dictionary is missinng one of the expected fields add it to the record as an empty string
+            elif field not in raw:
+                record[field] = "" if not field == ECoreFields.EXTRA else {}
+            
+            # For all other expected fields, add raw to the record
+            else:
+                record[field] = raw[field]
+        
+        return LogRecord(**record)
+    
+
+    def _record_metrics(self, record: LogRecord) -> None:
+        """Adds the information from the provided record to the parsing metrics"""
+        self._level_counts[record.level] += 1
+        self._module_counts[record.module] += 1
+        self._func_counts[record.function] += 1
+    
+
+    def _reset(self) -> None:
+        """Resets the records and metrics of the parser"""
+        self.records = []
+        self._level_counts = Counter()
+        self._module_counts = Counter()
+        self._func_counts = Counter()
+
+    
+    
+    def __repr__(self):
+        return f"{self.__class__.__name__}({os.path.basename(self.file_path)})"
+    
