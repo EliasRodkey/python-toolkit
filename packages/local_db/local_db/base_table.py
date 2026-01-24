@@ -1,13 +1,13 @@
-'''
+"""
 local_db.base_table.py
-This module defines a base table class using SQLAlchemy's declarative base. 
+This module defines a base table class using SQLAlchemy"s declarative base. 
 It provides a foundation for creating database models and includes utility 
 functions to retrieve column names and their corresponding types.
 
 Classes:
     Base: The declarative base class for all database models.
     BaseTable: An abstract base class for database tables with utility methods.
-'''
+"""
 from enum import Enum
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import (
@@ -75,23 +75,23 @@ class BaseTable(Base):
 
     @classmethod
     def get_column_names(cls):
-        '''Returns a list of column names for the model.'''
+        """Returns a list of column names for the model."""
         return [column.name for column in cls.__table__.columns]
 
 
     @classmethod
     def get_column_types(cls):
-        '''Returns a dictionary mapping column names to their types.'''
+        """Returns a dictionary mapping column names to their types."""
         return {column.name: type(column.type) for column in cls.__table__.columns}
     
 
     @property
     def column_names(self):
-        '''Returns a list of column names for the instance.'''
+        """Returns a list of column names for the instance."""
         return self.get_column_names()
     
 
     @property
     def column_types(self):
-        '''Returns a dictionary mapping column names to their types for the instance.'''
+        """Returns a dictionary mapping column names to their types for the instance."""
         return self.get_column_types()
