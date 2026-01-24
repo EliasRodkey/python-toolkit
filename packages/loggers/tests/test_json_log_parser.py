@@ -92,7 +92,6 @@ class TestJSONLogParser:
 
         from pprint import pprint
         level_counts = log_parser.level_counts
-        pprint(level_counts)
         assert level_counts["DEBUG"] == 4
         assert level_counts["INFO"] == 2
         assert level_counts["WARNING"] == 2
@@ -101,11 +100,9 @@ class TestJSONLogParser:
         assert level_counts["PERFORMANCE"] == 3
 
         module_counts = log_parser.module_counts
-        pprint(module_counts)
         assert module_counts[__name__] == 14
 
         func_counts = log_parser.func_counts
-        pprint(func_counts)
         assert func_counts["test_json_log_parsing"] == 14
     
 
@@ -249,3 +246,33 @@ class TestJSONLogParser:
         assert len(df_filtered) == 3
         for level in df_filtered["level"]:
             assert level in ["ERROR", "CRITICAL"]
+
+    
+    def test_top_messages(self, test_json_log_parsing):
+        """Tests getting the top n messages from the log records"""
+        logger, log_controller, log_parser = test_json_log_parsing
+
+        log_parser.load()
+
+        random_top_messages = log_parser.top_messages(5)  # Warm up call, see what happens
+        assert type(random_top_messages) == list
+        assert type(random_top_messages[0]) == tuple
+        assert len(random_top_messages) == 5
+        assert random_top_messages[0][1] == 1 # Since all messages unique at this point, top message should be 1 occurrence
+
+        logger.debug("Repeated message for testing top messages")
+        logger.info("Repeated message for testing top messages")
+        logger.warning("Repeated message for testing top messages")
+        logger.info("Another different repeated message")
+        logger.info("Another different repeated message")
+
+        log_parser.load()
+
+        top_messages = log_parser.top_messages(3)
+        import pprint
+        pprint.pprint(top_messages)
+        assert top_messages[0][0] == "Repeated message for testing top messages"
+        assert top_messages[0][1] == 3
+        assert top_messages[1][0] == "Another different repeated message"
+        assert top_messages[1][1] == 2
+        assert top_messages[2][0] == "Something is happening behind the scenes..."

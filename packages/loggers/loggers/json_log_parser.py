@@ -5,7 +5,7 @@ Class:
     JSONLogParser: Class that reads, filters, and interprets a JSON log file.
 """
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 import json
 import os
@@ -89,8 +89,9 @@ class JSONLogParser():
 
 
     def load(self) -> None:
-        """Loads the json log from the given path. Populates self.records and records metrics"""
+        """Loads the json log from the given path. Populates self.records and records metrics. Wipes any existing records and metrics."""
         # Open the json log file and iterate over each line, loading json and adding records to the parser.
+        self._reset()
         record_id = 0
         with self.path.open() as f:
             for lineno, line in enumerate(f, start=1):
@@ -148,7 +149,7 @@ class JSONLogParser():
             return True
         
         return [r for r in self.records if in_range(r)]
-    
+
 
     def get_extra(self, record: LogRecord, key: str, default=None) -> Any:
         """
@@ -186,11 +187,12 @@ class JSONLogParser():
         Returns:
             LogRecord | list[LogRecord] | None: The LogRecord with the given ID, a list of LogRecords with the given IDs, or None if not found.
         """
+        # Make sure record_id is of the expected type
         if not isinstance(record_id, (int, list)):
             raise ValueError("record_id must be an int or a list of ints")
         
+        # Iterate through the records once to find mathcing IDs
         found_records = []
-
         for record in self.records:
             if isinstance(record_id, int):
                 if record.id == record_id:
@@ -200,13 +202,14 @@ class JSONLogParser():
             elif isinstance(record_id, list):
                 if record.id in record_id:
                     found_records.append(record)
-                    
+        
+        # Return either a single record, a list of records, or None
         return found_records if isinstance(record_id, list) else (found_records[0] if found_records else None)
 
 
     def top_messages(self, n: int=10) -> List[tuple[str, int]]:
-        """Returns the top n messages and the number of times they occur"""
-        counter = Counter(r.message for r in self.records if ECoreFields.MESSAGE in r and r.message != "")
+        """Returns the top n messages and the number of times they occur, If none occur multiple times, returns first n messages"""
+        counter = Counter(r.message for r in self.records if ECoreFields.MESSAGE in r.__dict__ and r.message != "")
         return counter.most_common(n)
 
     @property
@@ -233,7 +236,7 @@ class JSONLogParser():
         records = records if records else self.records
         for record in records:
             row = {k: v for k, v in record.__dict__.items() if k != ECoreFields.EXTRA}
-            row.update(record.extra)
+            row.update(record.extra) # Flatten extra dict into new columns
             rows.append(row)
         
         return pd.DataFrame(rows)
@@ -266,6 +269,15 @@ class JSONLogParser():
         self._level_counts[record.level] += 1
         self._module_counts[record.module] += 1
         self._func_counts[record.function] += 1
+    
+
+    def _reset(self) -> None:
+        """Resets the records and metrics of the parser"""
+        self.records = []
+        self._level_counts = Counter()
+        self._module_counts = Counter()
+        self._func_counts = Counter()
+        
     
     
     def __repr__(self):
