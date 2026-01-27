@@ -2,7 +2,8 @@
 """
 local_db.database_manager.py
 
-This module contains a database object class
+This module contains a database object class.
+logger in this module used LoggingExtras.TABLE_CLASS to refer to the current table class name in json logging.
 
 Classes:
     - DatabaseManager: a class object which allows for the following actions to be performed:
@@ -12,21 +13,22 @@ Classes:
         - Updating
         - Deletion
 """
+# Standard library imports
+from typing import List, Any
 
 # Third-Party library imports
 import pandas as pd
-from typing import List, Any
 import sqlalchemy
 
 # Import logging dependencies
 import logging
-from loggers import configure_logger, LoggingHandlerController
+from loggers import configure_logger
 
 # local imports
 from local_db.database_connections import create_engine_conn, create_session
 from local_db.base_table import BaseTable
 from local_db.database_file import DatabaseFile
-from local_db.utils import map_dtype_list_to_sql, orm_list_to_dataframe
+from local_db.utils import LoggingExtras, map_dtype_list_to_sql, orm_list_to_dataframe
 
 
 # Initialize module logger
@@ -66,6 +68,7 @@ class DatabaseManager():
         # Initialize the database file and object class
         self.file = database_file
         self.table_class = table_class
+        self.table_name = self.table_class.__tablename__
         
         # Create database session using DatabaseFile file_path attribute
         self.start_session()
@@ -94,12 +97,18 @@ class DatabaseManager():
             except sqlalchemy.exc.IntegrityError as e:
                 # Handle the IntegrityError if the item already exists in the database
                 self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
-                logger.error(f"DatbaseManager.add_item() -> Item already exists in database: {self.table_class.__tablename__} with attributes: {kwargs}")
+                logger.exception(f"Item already exists in database.", extra={
+                                                                        LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                        LoggingExtras.ATTRIBUTES: kwargs
+                                                                    })
                 raise e
             
             finally:
                 self.session.commit() # Commit the changes to the database
-                logger.info(f"Item added to database: {self.table_class.__tablename__} with attributes: {kwargs}")
+                logger.info(f"Item added to database.", extra={
+                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                            LoggingExtras.ATTRIBUTES: kwargs
+                                                        })
     
 
     def add_multiple_items(self, entries: List[dict[str, Any]]):
@@ -130,7 +139,7 @@ class DatabaseManager():
         if self._df_compatible(df):
 
             # Append the DataFrame to the database table using the SQLAlchemy engine
-            df.to_sql(self.table_class.__tablename__, self.engine, if_exists="append", index=False)
+            df.to_sql(self.table_class, self.engine, if_exists="append", index=False)
 
             try:
                 # Add the new item to the session and commit the changes to the database
@@ -139,12 +148,18 @@ class DatabaseManager():
             except sqlalchemy.exc.IntegrityError as e:
                 # Handle the IntegrityError if the item already exists in the database
                 self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
-                logger.error(f"DatbaseManager.append_dataframe() -> dubplicates detected in: {self.table_class.__tablename__} with DataFrame attributes: {df.columns.tolist()}")
+                logger.exception(f"Dubplicates detected in : {self.table_name}.", extra={
+                                                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                    LoggingExtras.COLUMNS: df.columns.tolist()
+                                                                                })
                 raise e
             
             finally:
                 self.session.commit() # Commit the changes to the database
-                logger.info(f"DataFrame appended to database: {self.table_class.__tablename__} with DataFrame attributes: {df.columns.tolist()}")        
+                logger.info(f"DataFrame appended to database: {self.table_name}.", extra={
+                                                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                    LoggingExtras.COLUMNS: df.columns.tolist()
+                                                                                })        
 
 
     def fetch_all_items(self) -> List[BaseTable] | None:
@@ -154,15 +169,15 @@ class DatabaseManager():
         Returns:
             list[BaseTable] | None: A list of all BaseTable items in the database table or None if table is empty.
         """
-        logger.debug(f"Fetching all items from database.", extra={"table_class": self.table_class.__tablename__})
+        logger.debug(f"Fetching all items from database.", extra={LoggingExtras.TABLE_CLASS: self.table_class})
 
         result = self.session.query(self.table_class).all()
-        if result == []:
-            logger.warning(f"No items found in database.", extra={"table_class": self.table_class.__tablename__})
-            return None
-        else:
-            logger.debug(f"Items found in database.", extra={"table_class": self.table_class.__tablename__})
+        if result != []:
+            logger.debug(f"All items retrieved from database: {self.table_name}.", extra={LoggingExtras.TABLE_CLASS: self.table_class})
             return self.session.query(self.table_class).all()
+        else:
+            logger.warning(f"No items found in database: {self.table_name}.", extra={LoggingExtras.TABLE_CLASS: self.table_class})
+            return None
     
 
     def fetch_item_by_id(self, item_id) -> List[BaseTable] | None:
@@ -182,10 +197,16 @@ class DatabaseManager():
 
         # If the item exists, return it; otherwise, return None
         if item:
-            logger.debug(f"Item found in database by ID.", extra={"table_class": self.table_class.__tablename__, "item_id": item_id})
+            logger.debug(f"Item found in database by ID: {item_id}.", extra={
+                                                                        LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                        LoggingExtras.ITEM_ID: item_id
+                                                                        })
             return item
         else:
-            logger.debug(f"Item not found in database by ID.", extra={"table_class": self.table_class.__tablename__, "item_id": item_id})
+            logger.warning(f"Item not found in database by ID: {item_id}.", extra={
+                                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                            LoggingExtras.ITEM_ID: item_id
+                                                                        })
             return None
     
 
@@ -207,11 +228,17 @@ class DatabaseManager():
 
         if query:
             # If the query returns results, return them as a list
-            logger.debug(f"DatabaseManager.fetch_items_by_attribute() -> Items found in database: {self.table_class.__tablename__} with attributes: {kwargs}")
+            logger.debug("Items found in database by using attributes.", extra={
+                                                                                LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                LoggingExtras.ATTRIBUTES: kwargs
+                                                                            })
             return query.all()
         else:
             # If no results are found, return an empty list
-            logger.debug(f"DatabaseManager.fetch_items_by_attribute() -> No items found in database: {self.table_class.__tablename__} with attributes: {kwargs}")
+            logger.warning("No items found in database by using attributes.", extra={
+                                                                                LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                LoggingExtras.ATTRIBUTES: kwargs
+                                                                            })
             return None
 
 
@@ -228,7 +255,7 @@ class DatabaseManager():
         Returns:
             list[BaseTable] | None: A list of all BaseTable items in the database table or None if table is empty.
         """
-        logger.debug(f"DatabaseManager.filter_items() -> Applying filters to database: {self.table_class.__tablename__} with filters: {filters}")
+        logger.debug(f"Applying filters to database.", extra={LoggingExtras.TABLE_CLASS: self.table_class, LoggingExtras.FILTERS: filters})
 
         clauses = []
         query = self.session.query(self.table_class)
@@ -237,7 +264,11 @@ class DatabaseManager():
 
             # Validate column name
             if not hasattr(self.table_class, column_name):
-                logger.error(f"DatabaseManager.filter_items() -> Invalid column: {column_name} in filters: {filters}, {column_name}")
+                logger.error(f"Invalid column in filters: {column_name}.", extra={
+                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                            LoggingExtras.FILTERS: filters, 
+                                                            LoggingExtras.COLUMNS: column_name
+                                                            })
                 raise AttributeError(f"Invalid column: {column_name}")
 
             # Loop over filters and build conditions
@@ -254,7 +285,11 @@ class DatabaseManager():
                 # Create condition using the _OPERATOR_MAP
                 condition = self._OPERATOR_MAP[op](column, value)
             except KeyError:
-                logger.error(f"DatabaseManager.filter_items() -> Unsupported operator: {op} in filters: {filters}, {column_name}")
+                logger.exception(f"Unsupported operator in filters: {op}.", extra={
+                                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                    LoggingExtras.FILTERS: filters, 
+                                                                    "operator": op
+                                                                })
                 raise ValueError(f"Unsupported operator: {op}")
 
             clauses.append(condition)
@@ -265,11 +300,19 @@ class DatabaseManager():
         else: # Combine clauses with AND logic
             query = query.filter(sqlalchemy.and_(*clauses))
 
-        logger.debug(f"DatabaseManager.filter_items() -> Filters applied to database: {self.table_class.__tablename__} with filters: {filters} results: {query.all()}")
-        if query.all() == []:
-            return None
+        logger.debug("Filters successfully applied to database with filters", extra={
+                                                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                    LoggingExtras.FILTERS: filters
+                                                                                })
+        result = query.all() 
+        if result != []:
+            return result
         else:
-            return  query.all()
+            logger.warning("No items found in database after applying filters.", extra={
+                                                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                    LoggingExtras.FILTERS: filters
+                                                                                })
+            return  None
 
     
     def to_dataframe(self):
@@ -281,7 +324,7 @@ class DatabaseManager():
         """
 
         # Fetch all items from the database and convert them to a DataFrame
-        logger.debug(f"DatabaseManager.to_dataframe() -> Converting database table to DataFrame: {self.table_class.__tablename__}")
+        logger.debug("Converting database table to DataFrame.", extra={LoggingExtras.TABLE_CLASS: self.table_class})
         return pd.read_sql(self.session.query(self.table_class).statement, self.session.bind)
 
 
@@ -308,7 +351,10 @@ class DatabaseManager():
             item_id (int): The ID of the item to be updated.
             **kwargs: Keyword arguments representing the attributes to be updated.
         """
-
+        logger.debug("Updating item in database.", extra={
+                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                    LoggingExtras.ATTRIBUTES: kwargs
+                                                })
         ## Check to make sure the dictionary keys match the database table columns
         if self._dict_columns_match(kwargs):
             
@@ -328,12 +374,15 @@ class DatabaseManager():
         except sqlalchemy.exc.IntegrityError as e:
             # Handle the IntegrityError if the item already exists in the database
             self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
-            logger.error(f"DatabaseManager.update_item() -> Unable to update item, value already exists in database: {self.table_class.__tablename__} with attributes: {kwargs}")
+            logger.exception("Unable to update item, value already exists in database.", extra={
+                                                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                            LoggingExtras.ATTRIBUTES: kwargs
+                                                                                        })
             raise e
         
         finally:
             self.session.commit() # Commit the changes to the database
-            logger.info(f"Item updated in database: {self.table_class.__tablename__} with attributes: {kwargs}")
+            logger.info(f"Item updated in database with ID {item_id}.", extra={LoggingExtras.TABLE_CLASS: self.table_class, LoggingExtras.ATTRIBUTES: kwargs})
 
 
     def delete_item(self, item_id):
@@ -351,9 +400,15 @@ class DatabaseManager():
         if item:
             self.session.delete(item)
             self.session.commit()
-            logger.info(f"Item deleted from database: {self.table_class.__tablename__} with ID: {item_id}")
+            logger.info(f"Item deleted from database with ID: {item_id}.", extra={
+                                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                            LoggingExtras.ITEM_ID: item_id
+                                                                        })
         else:
-            logger.warning(f"DatabaseManager.delete_item() -> Item not found in database: {self.table_class.__tablename__} with ID: {item_id}")
+            logger.warning(f"Item not found in database with ID: {item_id}.", extra={
+                                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                            LoggingExtras.ITEM_ID: item_id
+                                                                        })
 
     
     def delete_items_by_attribute(self, **kwargs):
@@ -364,7 +419,10 @@ class DatabaseManager():
             **kwargs: Keyword arguments representing the attributes to filter by. 
                       Keys should match column names and values should match the column types.
         """
-        logger.debug(f"DatabaseManager.delete_items_by_attribute() -> Deleting items from database: {self.table_class.__tablename__} with attributes: {kwargs}")
+        logger.debug("Deleting items from database with given attributes", extra={
+                                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                            LoggingExtras.ATTRIBUTES: kwargs
+                                                                        })
 
         # Create a query object to filter items based on the provided attributes
         query = self.session.query(self.table_class).filter_by(**kwargs)
@@ -374,10 +432,16 @@ class DatabaseManager():
             for item in query.all():
                 self.session.delete(item)
             self.session.commit()
-            logger.info(f"Items deleted from database: {self.table_class.__tablename__} with attributes: {kwargs}")
+            logger.info("Items deleted from database with given attributes.", extra={
+                                                                                LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                LoggingExtras.ATTRIBUTES: kwargs
+                                                                            })
 
         else:
-            logger.warning(f"DatabaseManager.delete_items_by_attribute() -> No items found in database: {self.table_class.__tablename__} with attributes: {kwargs}")
+            logger.warning("No items found in database with given attributes.", extra={
+                                                                                LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                LoggingExtras.ATTRIBUTES: kwargs
+                                                                            })
 
 
     def delete_items_by_filter(self, filters: dict, use_or=False):
@@ -390,7 +454,11 @@ class DatabaseManager():
             use_or (bool): Whether to combine filters with OR logic instead of AND. Default is False.
         """
 
-        logger.debug(f"DatabaseManager.delete_items_by_filter() -> Deleting items from database: {self.table_class.__tablename__} with filters: {filters}")
+        logger.debug("Deleting items from database using filters.", extra={
+                                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                    LoggingExtras.FILTERS: filters, 
+                                                                    LoggingExtras.USE_OR: use_or
+                                                                })
 
         # get items to delete using the filter_items method
         items_to_delete = self.filter_items(filters, use_or=use_or)
@@ -399,10 +467,18 @@ class DatabaseManager():
             for item in items_to_delete:
                 self.session.delete(item)
             self.session.commit()
-            logger.info(f"Items deleted from database: {self.table_class.__tablename__} with filters: {filters}. use_or: {use_or}")
+            logger.info("Items deleted from database using filters.", extra={
+                                                                        LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                        LoggingExtras.FILTERS: filters, 
+                                                                        LoggingExtras.USE_OR: use_or
+                                                                    })
         
         else:
-            logger.warning(f"DatabaseManager.delete_items_by_filter() -> No items found in database: {self.table_class.__tablename__} with filters: {filters}. use_or: {use_or}")
+            logger.warning("No items found in database given with filters.", extra={
+                                                                                LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                LoggingExtras.FILTERS: filters, 
+                                                                                LoggingExtras.USE_OR: use_or
+                                                                            })
 
 
     def clear_table(self):
@@ -413,7 +489,9 @@ class DatabaseManager():
         # Delete all items from the database table
         num_deleted = self.session.query(self.table_class).delete()
         self.session.commit()
-        logger.info(f"All items deleted from database table: {self.table_class.__tablename__}, total items deleted: {num_deleted}")
+        logger.info(f"All items deleted from database table, total items deleted: {num_deleted}", extra={
+                                                                                                    LoggingExtras.TABLE_CLASS: self.table_class
+                                                                                                })
 
 
     def start_session(self):
@@ -422,8 +500,10 @@ class DatabaseManager():
         # Create a new session using the engine connection
         self.engine = create_engine_conn(self.file.file_path)
         self.session = create_session(self.engine)
-        logger.info(f"DatabaseManager session started with file: {self.file.name} and class type: {self.table_class}")
-        logger.debug(f"DatabaseManager.start_session() -> session started with file {self.file.abspath} and object class type: {self.table_class}")
+        logger.info(f"DatabaseManager session started with table: {self.table_name}", extra={
+                                                                                                        LoggingExtras.TABLE_CLASS: self.table_class,
+                                                                                                        LoggingExtras.FILE_PATH: self.file.name
+                                                                                                    })
 
 
     def end_session(self):
@@ -432,8 +512,10 @@ class DatabaseManager():
         # Close the session and dispose of the engine connection
         self.session.close()
         self.engine.dispose()
-        logger.info(f"DatabaseManager connection closed with file: {self.file.name} and class type: {self.table_class}")
-        logger.debug(f"DatabaseManager.end_session() -> connection closed with file {self.file.abspath} and object class type: {self.table_class}")
+        logger.info(f"DatabaseManager session ended with table: {self.table_name}", extra={
+                                                                                                LoggingExtras.TABLE_CLASS: self.table_class,
+                                                                                                LoggingExtras.FILE_PATH: self.file.name
+                                                                                            })
     
 
     def _df_columns_match(self, df: pd.DataFrame) -> bool:
@@ -451,11 +533,11 @@ class DatabaseManager():
         columns_match = set(df.columns).issubset(set(self.table_class.get_column_names()))
 
         if columns_match:
-            logger.debug(f"DatabaseManager._check_df_columns_match() -> DataFrame columns match database table columns: {df.columns.tolist()}")
+            logger.debug(f"DataFrame columns match database table columns.", extra={LoggingExtras.COLUMNS: df.columns.tolist()})
             return columns_match
         else:
             # Raise ValueError if they do not match
-            logger.error(f"DatabaseManager._check_df_columns_match() -> DataFrame columns do not match database table columns: {df.columns.tolist()}")
+            logger.error(f"DataFrame columns do not match database table columns.", extra={LoggingExtras.COLUMNS: df.columns.tolist()})
             raise ValueError(f"DataFrame columns do not match database table columns: {df.columns.tolist()}")
     
 
@@ -482,11 +564,11 @@ class DatabaseManager():
         types_match = set(sql_datatypes_dict.items()).issubset(set(table_datatypes_set))
 
         if types_match:
-            logger.debug(f"DatabaseManager._check_df_types_match() -> DataFrame types match database table types: {sql_datatypes}")
+            logger.debug(f"DataFrame types match database table types: {sql_datatypes}")
             return types_match
         else:
             # Raise ValueError if they do not match
-            logger.error(f"DatabaseManager._check_df_types_match() -> DataFrame types do not match database table types: {sql_datatypes}")
+            logger.error(f"DataFrame types do not match database table types: {sql_datatypes}")
             raise TypeError(f"DataFrame types do not match database table types: {sql_datatypes}")
     
 
@@ -520,11 +602,11 @@ class DatabaseManager():
         columns_match = set(data.keys()).issubset(set(self.table_class.get_column_names()))
 
         if columns_match:
-            logger.debug(f"DatabaseManager._check_dict_columns_match() -> Dictionary columns match database table columns: {data.keys()}")
+            logger.debug(f"Dictionary columns match database table columns: {data.keys()}")
             return columns_match
         else:
             # Raise ValueError if they do not match
-            logger.error(f"DatabaseManager._check_dict_columns_match() -> Dictionary columns do not match database table columns: {data.keys()}")
+            logger.error(f"Dictionary columns do not match database table columns: {data.keys()}")
             raise ValueError(f"Dictionary columns do not match database table columns: {data.keys()}")
 
 
@@ -551,11 +633,11 @@ class DatabaseManager():
         types_match = set(sql_datatypes_dict.items()).issubset(set(table_datatypes_set))
 
         if types_match:
-            logger.debug(f"DatabaseManager._check_dict_types_match() -> Dictionary types match database table types: {sql_datatypes}")
+            logger.debug(f"Dictionary types match database table types: {sql_datatypes}")
             return types_match
         else:
             # Raise ValueError if they do not match
-            logger.error(f"DatabaseManager._check_dict_types_match() -> Dictionary types do not match database table types: {sql_datatypes}")
+            logger.error(f"ictionary types do not match database table types: {sql_datatypes}")
             raise TypeError(f"Dictionary types do not match database table types: {sql_datatypes}")
         
 

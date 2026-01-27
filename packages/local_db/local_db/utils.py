@@ -4,13 +4,19 @@ local_db.utils.py
 
 This module contains several helper functions for the local_db_handler package
 
-Funcitons:
+Classes:
+    - LoggingExtras: An enum class which holds the different logging 'extra' field identifiers used in the package
+
+Functions:
     - check_db_exists: checks a given database url / path to see if it has already been created
     - is_db_file: checks a string to see if it is a valid db filename
 """
 
 # Standard library imports
+from enum import Enum
 import os
+
+# Third-party imports
 import pandas as pd
 from sqlalchemy import Column, Integer, Float, String, Boolean, DateTime, LargeBinary, create_engine
 from sqlalchemy.inspection import inspect
@@ -25,6 +31,22 @@ from . import DEFAULT_DB_DIRECTORY
 # Initiate module logger
 logger = logging.getLogger(__name__)
 log_handler_controller: LoggingHandlerController = configure_logger(logger)
+
+
+
+class LoggingExtras(str, Enum):
+    """An enum class which holds the different logging 'extra' field identifiers"""
+    TABLE_CLASS = "table_class"
+    FILTERS = "filters"
+    ATTRIBUTES = "attributes"
+    ITEM_ID = "item_id"
+    USE_OR = "use_or"
+    FILE_PATH = "file_path"
+    COLUMNS = "columns"
+
+    def __str__(self):
+        return str(self.value)
+
 
 
 # Functions
