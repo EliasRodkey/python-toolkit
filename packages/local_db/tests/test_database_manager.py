@@ -156,7 +156,7 @@ class TestDatabaseManager:
         entry_2_name = clean_database.session.query(MockTableObject).filter_by(name=TEST_ENTRY_2["name"]).first().name
         entry_2_age = clean_database.session.query(MockTableObject).filter_by(age=TEST_ENTRY_2["age"]).first().age
 
-        query_result = clean_database.fetch_all_items(as_dataframe=False)
+        query_result = clean_database.fetch_all_items()
 
         assert len(query_result) == 2, "Not all items fetched from the database."
         assert query_result[0].name == entry_1_name, f"Item 1 name does not match {query_result[0].name}."
@@ -172,7 +172,7 @@ class TestDatabaseManager:
         clean_database.add_item(**TEST_ENTRY_1)
         clean_database.add_item(**TEST_ENTRY_2)
 
-        item = clean_database.fetch_item_by_id(2, as_dataframe=False)
+        item = clean_database.fetch_item_by_id(2)
 
         assert clean_database.session.query(MockTableObject).filter_by(name=TEST_ENTRY_2["name"]).first().name == item.name, "Item not fetched by ID."
         assert clean_database.session.query(MockTableObject).filter_by(age=TEST_ENTRY_2["age"]).first().age == item.age, "Item not fetched by ID."
@@ -187,7 +187,7 @@ class TestDatabaseManager:
         clean_database.add_item(**TEST_ENTRY_2)
         clean_database.add_item(**TEST_ENTRY_3)
 
-        items = clean_database.fetch_items_by_attribute(as_dataframe=False, age=TEST_ENTRY_3["age"])
+        items = clean_database.fetch_items_by_attribute(age=TEST_ENTRY_3["age"])
 
         assert len(items) == 2, "Items not fetched by attribute."
         assert items[0].name == TEST_ENTRY_1["name"], f"Item 1 name does not match {items[0].name}."
@@ -203,7 +203,7 @@ class TestDatabaseManager:
         clean_database.add_item(name="book", age=12, email="education")
 
         # Act
-        results = clean_database.filter_items({"email": "food"}, as_dataframe=False)
+        results = clean_database.filter_items({"email": "food"})
 
         # Assert
         assert len(results) == 1
@@ -222,7 +222,7 @@ class TestDatabaseManager:
         results = clean_database.filter_items({
             "name": "book",
             "age": (">", 5)
-        }, as_dataframe=False)
+        })
 
         # Assert
         assert len(results) == 1
@@ -235,10 +235,10 @@ class TestDatabaseManager:
         clean_database.add_item(name="coffee", age=3, email="food")
 
         # Act
-        results = clean_database.filter_items({"email": "transport"}, as_dataframe=False)
+        results = clean_database.filter_items({"email": "transport"})
 
         # Assert
-        assert results == []
+        assert results == None
 
 
     def test_filter_items_invalid_column_raises(self, clean_database):
@@ -280,7 +280,7 @@ class TestDatabaseManager:
         # Update the item in the database
         clean_database.update_item(1, **TEST_ENTRY_2)
 
-        updated_item = clean_database.fetch_item_by_id(1, as_dataframe=False)
+        updated_item = clean_database.fetch_item_by_id(1)
 
         assert updated_item.name == "Jane Doe", f"Item name not updated correctly: {updated_item.name}"
         assert updated_item.age == 25, f"Item age not updated correctly: {updated_item.age}"
@@ -310,7 +310,7 @@ class TestDatabaseManager:
         clean_database.delete_items_by_attribute(age=30)
 
         assert clean_database.session.query(MockTableObject).count() == 1, "Items not deleted by attribute."
-        remaining_ages = [item.age for item in clean_database.fetch_all_items(as_dataframe=False)]
+        remaining_ages = [item.age for item in clean_database.fetch_all_items()]
         assert 30 not in remaining_ages, "Item with specified attribute not deleted."
 
     
@@ -326,7 +326,7 @@ class TestDatabaseManager:
         clean_database.delete_items_by_filter({"age": (">=", 27), "name": "John Doe"})
 
         assert clean_database.session.query(MockTableObject).count() == 2, "Items not deleted by filter."
-        remaining_names = [item.name for item in clean_database.fetch_all_items(as_dataframe=False)]
+        remaining_names = [item.name for item in clean_database.fetch_all_items()]
         assert "John Doe" not in remaining_names, "Item with specified filter not deleted."
         assert "Alice Smith" in remaining_names, "Incorrect item deleted."
         

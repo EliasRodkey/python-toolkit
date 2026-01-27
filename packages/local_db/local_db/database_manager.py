@@ -15,7 +15,7 @@ Classes:
 
 # Third-Party library imports
 import pandas as pd
-from typing import List
+from typing import List, Any
 import sqlalchemy
 
 # Import logging dependencies
@@ -102,7 +102,7 @@ class DatabaseManager():
                 logger.info(f"Item added to database: {self.table_class.__tablename__} with attributes: {kwargs}")
     
 
-    def add_multiple_items(self, entries: List[dict]):
+    def add_multiple_items(self, entries: List[dict[str, Any]]):
         """
         Adds a new item to the database. unpack a dictionary if attributes using "**" operator
 
@@ -112,7 +112,7 @@ class DatabaseManager():
 
         # Create a new instance of the database object class with the provided attributes
         for entry in entries:
-            self.add_item(entry)
+            self.add_item(**entry)
 
         # Commit the changes to the database
         self.session.commit()
@@ -147,32 +147,34 @@ class DatabaseManager():
                 logger.info(f"DataFrame appended to database: {self.table_class.__tablename__} with DataFrame attributes: {df.columns.tolist()}")        
 
 
-    def fetch_all_items(self, as_dataframe=True) -> List[BaseTable] | pd.DataFrame:
+    def fetch_all_items(self) -> List[BaseTable] | None:
         """
         Fetches all items from the database table
-
-        Args:
-            as_dataframe (bool): Whether to return the items as a pandas DataFrame. Default is True.
         
         Returns:
-            list: A list of all items in the database table.
+            list[BaseTable] | None: A list of all BaseTable items in the database table or None if table is empty.
         """
-        logger.debug(f"DatabaseManager.fetch_all_items() -> Fetching all items from database: {self.table_class.__tablename__}")
+        logger.debug(f"Fetching all items from database.", extra={"table_class": self.table_class.__tablename__})
 
-        orm_items = self.session.query(self.table_class).all()
-        return self._cond_convert_orm(orm_items, as_dataframe)
+        result = self.session.query(self.table_class).all()
+        if result == []:
+            logger.warning(f"No items found in database.", extra={"table_class": self.table_class.__tablename__})
+            return None
+        else:
+            logger.debug(f"Items found in database.", extra={"table_class": self.table_class.__tablename__})
+            return self.session.query(self.table_class).all()
     
 
-    def fetch_item_by_id(self, item_id, as_dataframe=True) -> BaseTable | pd.DataFrame | None:
+    def fetch_item_by_id(self, item_id) -> List[BaseTable] | None:
         """
         Fetches an item from the database based on its ID.
+        Requires the table has "id" column with unique values.
         
         Args:
             item_id (int): The ID of the item to be fetched.
-            as_dataframe (bool): Whether to return the items as a pandas DataFrame. Default is True.
 
         Returns:
-            item: The item object if found, otherwise None.
+            list[BaseTable] | None: A BaseTable item with matching id in the database table or None if table is empty.
         """
 
         # Locate the item in the database using its ID
@@ -180,25 +182,24 @@ class DatabaseManager():
 
         # If the item exists, return it; otherwise, return None
         if item:
-            logger.debug(f"DatabaseManager.fetch_item_by_id() -> Item found in database: {self.table_class.__tablename__} with ID: {item_id}")
-            return self._cond_convert_orm(item, as_dataframe)
+            logger.debug(f"Item found in database by ID.", extra={"table_class": self.table_class.__tablename__, "item_id": item_id})
+            return item
         else:
-            logger.debug(f"DatabaseManager.fetch_item_by_id() -> Item not found in database: {self.table_class.__tablename__} with ID: {item_id}")
+            logger.debug(f"Item not found in database by ID.", extra={"table_class": self.table_class.__tablename__, "item_id": item_id})
             return None
     
 
-    def fetch_items_by_attribute(self, as_dataframe, **kwargs) -> List[BaseTable] | pd.DataFrame | List:
+    def fetch_items_by_attribute(self,**kwargs) -> List[BaseTable] | None:
         """
         Fetches items from the database based on specified attributes.
-        Only suports euqal and logic, no complex queries yet.
+        Only supports equals and logic, no complex queries yet.
         
         Args:
             **kwargs: Keyword arguments representing the attributes to filter by. 
                       Keys should match column names and values should match the column types.
-            as_dataframe (bool): Whether to return the items as a pandas DataFrame. Must be first argument.
 
         Returns:
-            list: A list of items matching the specified attributes.
+            list[BaseTable] | None: A list of all BaseTable items in the database table with matching attributes or None if table is empty.
         """
 
         # Create a query object to filter items based on the provided attributes
@@ -207,14 +208,14 @@ class DatabaseManager():
         if query:
             # If the query returns results, return them as a list
             logger.debug(f"DatabaseManager.fetch_items_by_attribute() -> Items found in database: {self.table_class.__tablename__} with attributes: {kwargs}")
-            return self._cond_convert_orm(query.all(), as_dataframe)
+            return query.all()
         else:
             # If no results are found, return an empty list
             logger.debug(f"DatabaseManager.fetch_items_by_attribute() -> No items found in database: {self.table_class.__tablename__} with attributes: {kwargs}")
-            return []
+            return None
 
 
-    def filter_items(self, filters: dict, use_or=False, as_dataframe=True) -> List[BaseTable] | pd.DataFrame:
+    def filter_items(self, filters: dict, use_or=False) -> List[BaseTable] | None:
         """
         Apply N filters with operators and return ORM objects.
 
@@ -223,10 +224,9 @@ class DatabaseManager():
                             Supported operators: "==", "!=", ">", ">=", "<", "<=", "in", "like" (See _OPERATOR_MAP).
                             if value is no a tuple, equality is assumed.
             use_or (bool): Whether to combine filters with OR logic instead of AND. Default is False.
-            as_dataframe (bool): Whether to return the items as a pandas DataFrame. Default is True.
         
         Returns:
-            list: A list of items matching the specified filters. or a DataFrame if as_dataframe is True.
+            list[BaseTable] | None: A list of all BaseTable items in the database table or None if table is empty.
         """
         logger.debug(f"DatabaseManager.filter_items() -> Applying filters to database: {self.table_class.__tablename__} with filters: {filters}")
 
@@ -266,7 +266,10 @@ class DatabaseManager():
             query = query.filter(sqlalchemy.and_(*clauses))
 
         logger.debug(f"DatabaseManager.filter_items() -> Filters applied to database: {self.table_class.__tablename__} with filters: {filters} results: {query.all()}")
-        return self._cond_convert_orm(query.all(), as_dataframe)
+        if query.all() == []:
+            return None
+        else:
+            return  query.all()
 
     
     def to_dataframe(self):
@@ -280,6 +283,21 @@ class DatabaseManager():
         # Fetch all items from the database and convert them to a DataFrame
         logger.debug(f"DatabaseManager.to_dataframe() -> Converting database table to DataFrame: {self.table_class.__tablename__}")
         return pd.read_sql(self.session.query(self.table_class).statement, self.session.bind)
+
+
+    def convert_orm_list_to_dataframe(self, orm_list: List[BaseTable]) -> pd.DataFrame:
+        """
+        Converts a list of ORM objects to a pandas DataFrame.
+
+        Args:
+            orm_list (List[BaseTable]): A list of ORM objects to be converted.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing the data from the ORM objects.
+        """
+
+        # Convert the list of ORM objects to a DataFrame
+        return orm_list_to_dataframe(orm_list)
     
 
     def update_item(self, item_id, **kwargs):
@@ -375,9 +393,9 @@ class DatabaseManager():
         logger.debug(f"DatabaseManager.delete_items_by_filter() -> Deleting items from database: {self.table_class.__tablename__} with filters: {filters}")
 
         # get items to delete using the filter_items method
-        items_to_delete = self.filter_items(filters, use_or=use_or, as_dataframe=False)
+        items_to_delete = self.filter_items(filters, use_or=use_or)
 
-        if items_to_delete != []:
+        if items_to_delete is not None:
             for item in items_to_delete:
                 self.session.delete(item)
             self.session.commit()
@@ -554,23 +572,6 @@ class DatabaseManager():
 
         # Check if the columns and data types of the DataFrame match the database table
         return self._dict_columns_match(data) and self._dict_types_match(data)
-    
-
-    def _cond_convert_orm(self, orm_objects, to_dataframe):
-        """
-        Conditionally converts a list of ORM objects to a pandas DataFrame.
-
-        Args:
-            orm_objects (list): A list of ORM objects to be converted.
-            to_dataframe (bool): Whether to convert the ORM objects to a DataFrame.
-
-        Returns:
-            pd.DataFrame or list: A DataFrame if to_dataframe is True, otherwise the original list of ORM objects.
-        """
-
-        if to_dataframe:
-            return orm_list_to_dataframe(orm_objects)
-        return orm_objects
     
 
     @property
