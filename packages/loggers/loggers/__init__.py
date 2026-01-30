@@ -1,4 +1,5 @@
 # Import specific functions or classes for direct access at a package level
+from configure_logging import configure_logging
 from .handler_controller import HandlerController, StructuredLogger
 from .json_log_parser import JSONLogParser, LogRecord
 from .utils import ELoggingFormats, LOG_FILE_DEFAULT_DIRECTORY, add_performance_level

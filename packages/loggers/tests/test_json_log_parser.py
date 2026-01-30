@@ -9,7 +9,7 @@ import pytest
 
 from loggers.json_log_parser import JSONLogParser, LogRecord
 from loggers.handler_controller import HandlerController
-from loggers.configure_logger import configure_logging
+from loggers.configure_logging import configure_logging
 from loggers.utils import clear_logs, add_performance_level
 
 
