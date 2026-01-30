@@ -9,7 +9,7 @@ import logging
 import pytest
 import os
 
-from loggers.logger_configs import configure_logger
+from loggers.logging_handler_controller import configure_logger
 from loggers.utils import clear_logs, add_performance_level
 
 add_performance_level()
