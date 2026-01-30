@@ -12,8 +12,6 @@ import os
 from loggers.handler_controller import HandlerController
 from loggers.utils import clear_logs, add_performance_level
 
-add_performance_level()
-
 
 @pytest.fixture()
 def test_json_logs():
@@ -21,6 +19,7 @@ def test_json_logs():
     
     try:
         # Setup: create log folders and files and configure logger, register log messages
+        add_performance_level()
         logger = logging.getLogger(__name__)
         log_controller = configure_logger(logger)
 
@@ -60,7 +59,7 @@ def test_json_logs():
         clear_logs()
 
 
-class TestLoggingHandlerControler:
+class TestHandlerControler:
     """Test class from LoggingHandlerController"""
 
     def test_json_log_file_creation(self, test_json_logs):

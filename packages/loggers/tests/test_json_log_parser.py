@@ -8,10 +8,8 @@ import logging
 import pytest
 
 from loggers.json_log_parser import JSONLogParser, LogRecord
-from loggers.handler_controller import configure_logger
+from loggers.handler_controller import HandlerController
 from loggers.utils import clear_logs, add_performance_level
-
-add_performance_level()
 
 
 @pytest.fixture()
@@ -20,6 +18,7 @@ def test_json_log_parsing():
     
     try:
         # Setup: create log folders and files and configure logger, register log messages
+        add_performance_level()
         logger = logging.getLogger(__name__)
         log_controller = configure_logger(logger)
 
