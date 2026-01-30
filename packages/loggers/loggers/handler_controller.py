@@ -82,7 +82,7 @@ class HandlerController():
     Properties:
         handlers_names (list): A list of the handler names handled by this class
     """
-    handlers: dict
+    handlers: dict = {}
     log_datetime_stamp: str = ""
     run_directory: str = ""
     json_file_path: str = ""
@@ -90,7 +90,7 @@ class HandlerController():
     stream_handler: logging.StreamHandler
     _initialized: bool = False
 
-    def __new__(cls, log_directory: str):
+    def __new__(cls, log_directory: str=LOG_FILE_DEFAULT_DIRECTORY):
         """If this is the first time the class is being instantiated, set up the daily log folder and json log file path."""
         if cls._initialized == False:
             # Generate log folder and return datetime stmap + directory
@@ -118,7 +118,7 @@ class HandlerController():
         daily_log_stamp = create_datestamp() # Daily log folder
         log_datetime_stamp = create_log_datetime_stamp() # Log folder within the daily log folder
         run_directory = os.path.join(log_directory, daily_log_stamp, log_datetime_stamp)
-        # os.makedirs(run_directory, exist_ok=True) # Create the run directory if it doesn't exist
+        os.makedirs(run_directory, exist_ok=True) # Create the run directory if it doesn't exist
         return (log_datetime_stamp, run_directory)
 
     @classmethod
@@ -150,6 +150,22 @@ class HandlerController():
         cls._add_handler(run_name, readable_text_handler)
     
     @classmethod
+    def get_handler(cls, key: str):
+        if key in cls.handlers:
+            return cls.handlers[key]
+        else:
+            raise KeyError(f"Key {key} does not exists in handlers: {list(cls.handlers.keys())}")
+    
+    @classmethod
+    def remove_handler(cls, name):
+        if name in cls.handlers:
+            cls.handlers[name].flush()
+            cls.handlers[name].close()
+            del cls.handlers[name]
+        else:
+            raise KeyError(f"Cannot remove {name} from handlers: {list(cls.handlers.keys())}")
+    
+    @classmethod
     def _add_handler(cls, name: str, handler: logging.Handler):
         """Adds a handler to the handlers dict"""
         if name not in cls.handlers:
@@ -161,8 +177,11 @@ class HandlerController():
     def __init__(self, log_directory: str=LOG_FILE_DEFAULT_DIRECTORY):
         self.log_directory = log_directory
     
-    @property
+
     def handler_names(self) -> List[str]:
         """Returns a list of the handler names in handlers"""
         return list(self.handlers.keys())
     
+    
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.run_directory})"
