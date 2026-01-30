@@ -1,7 +1,7 @@
 """
 Docstring for loggers.configure_logger.py
 
-This module contians functions and classes that are used to control  and standardize
+This module contains functions that are used to control and standardize
 logger configurations across modules and projects.
 
 Functions:
@@ -12,14 +12,11 @@ import logging
 
 # Local imports
 from loggers.handler_controller import HandlerController
-from loggers.utils import ELoggingFormats
+from loggers.utils import LOG_FILE_DEFAULT_DIRECTORY, add_performance_level
 
-def configure_logger(
-        logger: logging.Logger, 
-        run_name: str="main", 
-        format: ELoggingFormats=ELoggingFormats.FORMAT_BASIC, 
-        add_to_stream: bool=True,
-        log_direcotry: str=LOG_FILE_DEFAULT_DIRECTORY
+
+def configure_logging(
+        log_directory: str=LOG_FILE_DEFAULT_DIRECTORY
         ) -> HandlerController:
     """
     Configures a given logger with prefered handlers and formatting.
@@ -29,29 +26,25 @@ def configure_logger(
     Also adds a PERFORMANCE logging level to the logger for performance metrics.
 
     Args:
-        logger (logging.Logger): The logger instance to configure.
-        run_name (str): name for the run. Determines which file handler the logger will output to. defaults to "main".
-        format (ELoggingFormats): a string containing the desired logging output format
-        add_to_stream (bool): Whether or not the logger should output to the console
         log_directory (str): the parent folder for all logs, defaults to cwd/data/logs/.
 
     Returns:
         LoggingHandlerController: class that contains handlers and file paths to the log files associated with the current run.
     """
-    text_formatter = logging.Formatter(format)
-    log_controller = HandlerController(run_name, text_formatter, log_direcotry)
+    # Add performance level logging
+    add_performance_level()
 
-    # Set the default logger level to DEBUG
-    logger.setLevel(logging.DEBUG)
+    log_controller = HandlerController(log_directory=log_directory)
+
+    # Configure root logger with standardized handlers
+    root_logger = logging.getLogger()
 
     # Add handlers to the logger
-    logger.addHandler(log_controller.readable_file_handler)
-    logger.addHandler(log_controller.json_file_handler)
-
-    if add_to_stream:
-        logger.addHandler(log_controller.stream_handler)
+    root_logger.addHandler(log_controller.get_handler("main"))
+    root_logger.addHandler(log_controller.json_file_handler)
+    root_logger.addHandler(log_controller.stream_handler)
     
     # Ensure the logger does not create duplicate entries
-    logger.propagate = False
+    root_logger.propagate = False
 
     return log_controller
