@@ -1,5 +1,5 @@
 # Import specific functions or classes for direct access at a package level
-from .logging_handler_controller import LoggingHandlerController, StructuredLogger
+from .handler_controller import HandlerController, StructuredLogger
 from .json_log_parser import JSONLogParser, LogRecord
 from .utils import ELoggingFormats, LOG_FILE_DEFAULT_DIRECTORY, add_performance_level
 from .utils import create_datestamp, create_timestamp, create_log_datetime_stamp, compose_global_run_id

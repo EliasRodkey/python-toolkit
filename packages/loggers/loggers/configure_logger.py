@@ -11,7 +11,7 @@ Functions:
 import logging
 
 # Local imports
-from loggers.logging_handler_controller import LoggingHandlerController
+from loggers.handler_controller import HandlerController
 from loggers.utils import ELoggingFormats
 
 def configure_logger(
@@ -20,7 +20,7 @@ def configure_logger(
         format: ELoggingFormats=ELoggingFormats.FORMAT_BASIC, 
         add_to_stream: bool=True,
         log_direcotry: str=LOG_FILE_DEFAULT_DIRECTORY
-        ) -> LoggingHandlerController:
+        ) -> HandlerController:
     """
     Configures a given logger with prefered handlers and formatting.
     Includes a stream handler with standard output (level: INFO),
@@ -39,7 +39,7 @@ def configure_logger(
         LoggingHandlerController: class that contains handlers and file paths to the log files associated with the current run.
     """
     text_formatter = logging.Formatter(format)
-    log_controller = LoggingHandlerController(run_name, text_formatter, log_direcotry)
+    log_controller = HandlerController(run_name, text_formatter, log_direcotry)
 
     # Set the default logger level to DEBUG
     logger.setLevel(logging.DEBUG)

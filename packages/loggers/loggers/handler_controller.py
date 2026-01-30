@@ -60,7 +60,7 @@ class JSONFormatter(logging.Formatter):
 
 
 
-class LoggingHandlerController():
+class HandlerController():
     """
     This class is used to ensure that all loggers send their logs to the same files.
     This ensures that all loggers share the same run name and log file paths.
@@ -110,7 +110,7 @@ class LoggingHandlerController():
         
         os.makedirs(cls.run_directory, exist_ok=True) # Create the run directory if it doesn't exist
         
-        return super(LoggingHandlerController, cls).__new__(cls)
+        return super(HandlerController, cls).__new__(cls)
     
     @classmethod
     def _generate_program_run_folder(cls, log_directory: str) -> Tuple[str, str]:
