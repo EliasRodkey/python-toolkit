@@ -20,13 +20,16 @@ Class:
 # Standard library imports
 import sqlite3
 
+# Third-party imports
+import os
+
 # Import logging dependencies
 import logging
 from loggers import configure_logger, LoggingHandlerController
 
 # local imports
 from . import DEFAULT_DB_DIRECTORY
-from .utils import os, check_db_exists, is_db_file
+from .utils import LoggingExtras, check_db_exists, is_db_file
 
 # Initialize module logger
 logger = logging.getLogger(__name__)
@@ -56,8 +59,8 @@ class DatabaseFile():
         if is_db_file(name):
             self.name = name
         else:
-            logger.error(f"DatabaseFile.__init__() -> {name} is not a valid database filename.")
-            raise ValueError(f"{name} is not a valid database filename.")
+            logger.error(f"{name} is not a valid database filename.", extra={LoggingExtras.FILE_NAME: name})
+            raise ValueError(f"Database file {name} is not a valid database filename.")
         
         # Initialize the directory and path attributes
         self.directory = directory
@@ -66,7 +69,7 @@ class DatabaseFile():
 
         # If the directory does not exist, create it
         if not os.path.exists(self.directory):
-            logger.warning(f"DatabaseFile.__init__() -> {directory} does not exist. Creating at {self.file_path}...")
+            logger.warning(f"Database directory {directory} does not exist. Creating directory...", extra={LoggingExtras.FILE_PATH: directory})
             os.makedirs(directory)
 
 
@@ -77,24 +80,30 @@ class DatabaseFile():
 
     def create(self):
         """creates a new database file in a given directory, default .\\data."""
-        logger.info(f"creating database file {self.name}...")
+        logger.info(f"Creating database file {self.name}...")
         if self.exists():
-            logger.info(f"{self.name} already exists in {self.directory}")
+            logger.info(f"Database file {self.name} already exists in {self.directory}", extra={LoggingExtras.FILE_PATH: os.path.join(self.directory, self.name)})
         else:
             sqlite3.connect(self.file_path).close()
-            logger.info(f"database file {self.name} created.")
-            logger.debug(f"DatabaseFile.create() -> new db file path: {self.file_path}")
+            logger.info(f"Database file {self.name} created.", extra={LoggingExtras.FILE_NAME: self.name})
+            logger.debug(f"New db file path: {self.file_path}", extra={LoggingExtras.FILE_PATH: self.file_path})
 
 
     def move(self, target_directory: str) -> None:
         """moves a DatabaseFile object to a new directory"""
-        logger.info(f"moving {self.name} from {self.directory} to {target_directory}...")
+        logger.info(f"Moving {self.name} from {self.directory} to {target_directory}...", extra={
+                                                                                        LoggingExtras.FILE_NAME: self.name, 
+                                                                                        LoggingExtras.FILE_PATH: target_directory
+                                                                                        })
 
         # Check if db with that filename already exists in target dir. return False, not moved
         target_exists = check_db_exists(self.name, target_directory)
         if target_exists:
             # Does nothing if it already exists
-            logger.error(f"DatabaseFile.move() -> {self.name} already exists in {target_directory}.")
+            logger.error(f"Database file {self.name} already exists in {target_directory}.", extra={
+                                                                                        LoggingExtras.FILE_NAME: self.name, 
+                                                                                        LoggingExtras.FILE_PATH: target_directory
+                                                                                        })
         elif self.exists():
             # Moves to new directory if it doesn"t exist and the current file exists
             new_path = os.path.join(target_directory, self.name)
@@ -103,20 +112,22 @@ class DatabaseFile():
             self.abspath = os.path.abspath(self.file_path)
             self.directory = target_directory
         else:
-            logger.error(f"DatabaseFile.move() -> {self.name} cannot be moved because it doesn\"t exist in {self.directory}")
+            logger.error(f"Database file {self.name} cannot be moved because it doesn't exist in {self.directory}", extra={
+                                                                                        LoggingExtras.FILE_NAME: self.name, 
+                                                                                        LoggingExtras.FILE_PATH: self.directory
+                                                                                        })
             
 
     def delete(self):
         """deletes the file managed by the DatabaseFile instance"""
         if os.path.exists(self.abspath):
             os.remove(self.abspath)
-            logger.info(f"{self.name} deleted from {self.directory}...")
+            logger.info(f"Database file {self.name} deleted from {self.directory}...", extra={
+                                                                                        LoggingExtras.FILE_NAME: self.name, 
+                                                                                        LoggingExtras.FILE_PATH: self.directory
+                                                                                        })
         else:
-            logger.error(f"DatabaseFile.delete() -> {self.name} does not exist in {self.directory}. Cannot delete.")
-
-
-if __name__ == "__main__":
-    test_db = DatabaseFile("test.db", os.path.join(os.getcwd(), "tests"))
-    test_db.create()
-    test_db.move(os.path.join(os.getcwd(), "tests"))
-    test_db.delete()
+            logger.error(f"DatabaseFile.delete() -> {self.name} does not exist in {self.directory}. Cannot delete.", extra={
+                                                                                                                    LoggingExtras.FILE_NAME: self.name, 
+                                                                                                                    LoggingExtras.FILE_PATH: self.directory
+                                                                                                                    })

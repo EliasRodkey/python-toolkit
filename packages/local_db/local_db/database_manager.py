@@ -139,8 +139,7 @@ class DatabaseManager():
         if self._df_compatible(df):
 
             # Append the DataFrame to the database table using the SQLAlchemy engine
-            df.to_sql(self.table_class, self.engine, if_exists="append", index=False)
-
+            df.to_sql(self.table_name, self.engine, if_exists="append", index=False)
             try:
                 # Add the new item to the session and commit the changes to the database
                 self.session.flush() # Detects if the item already exists in the database

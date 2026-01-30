@@ -41,7 +41,7 @@ FAKE_DB = "fake.db"
 class TestDatabaseFile:
     # Functions
     def test_create_database_default(self):
-        """Tests the DatabaseFile.create() function from database_file by creating an new db file in the default db location and checking if it exists"""
+        """Tests the DatabaseFile.create() function from database_file by creating a new db file in the default db location and checking if it exists"""
         # Create db file in default location
         test_db = DatabaseFile(TEST_DB)
         test_db.create()

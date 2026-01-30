@@ -42,6 +42,7 @@ class LoggingExtras(str, Enum):
     ITEM_ID = "item_id"
     USE_OR = "use_or"
     FILE_PATH = "file_path"
+    FILE_NAME = "file_name"
     COLUMNS = "columns"
 
     def __str__(self):
@@ -61,14 +62,14 @@ def check_db_exists(db_filename:str, db_dir:str=DEFAULT_DB_DIRECTORY) -> bool:
     Returns:
         bool: True if the database file exists in the directory, False otherwise
     """
-    logger.info(f"checking if {db_filename} exists in {db_dir}...")
+    logger.info(f"Checking if {db_filename} exists in {db_dir}...", extra={LoggingExtras.FILE_PATH: os.path.join(db_dir, db_filename)})
 
     # Initialize return variables
     exists = False
 
     # Walk listed directory files
     for file in os.listdir(db_dir):
-        logger.debug(f"check_db_exists -> checking {db_filename} == {file}")
+        logger.debug(f"Checking {db_filename} == {file}")
 
         # Check if file has the same name as db_filename
         if db_filename == file:
@@ -89,12 +90,12 @@ def is_db_file(filename:str) -> bool:
     """
     try:
         # Check if filename is a string that ends with .db
-        logger.debug(f"is_db_file -> checking if {filename} is a .db file...")
+        logger.debug(f"Checking if {filename} is a .db file...", extra={LoggingExtras.FILE_NAME: filename})
         return filename.lower().endswith(".db")
     
     except AttributeError as e:
         # If filename is not a string, log the error and return False
-        logger.error(f"is_db_file -> {filename} is not a string: {e}")
+        logger.error(f"Filename {filename} is not a string: {e}")
         return False
 
 
@@ -167,9 +168,3 @@ def orm_list_to_dataframe(rows):
          for attr in inspect(row).mapper.column_attrs}
         for row in rows
     ])
-
-
-if __name__ == "__main__":
-    print(check_db_exists("test.db"))
-
-    print(map_dtype_list_to_sql([int, str, float]))

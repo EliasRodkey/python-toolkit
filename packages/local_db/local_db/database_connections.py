@@ -9,14 +9,18 @@ Functions:
     - create_session: creates and returns a SQLalchemy Session class object
 """
 
+
 # Import logging dependencies
 import logging
 from loggers import configure_logger, LoggingHandlerController
-from . import DEFAULT_DB_DIRECTORY
 
 # Third-Party library imports
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+# Local Imports
+from local_db import DEFAULT_DB_DIRECTORY
+from local_db.utils import LoggingExtras
 
 
 logger = logging.getLogger(__name__)
@@ -36,7 +40,9 @@ def create_engine_conn(relative_db_path:str=DEFAULT_DB_DIRECTORY) -> object:
         engine: a SQLalchemy engine object which can be used to connect to the database
     """
 
-    logger.info(f"creating connection engine to {relative_db_path}...")
+    logger.info(f"Creating connection engine to {relative_db_path}...", extra={
+                                                                        LoggingExtras.FILE_PATH: relative_db_path
+                                                                    })
 
     return create_engine(f"sqlite:///{relative_db_path}")
 
@@ -51,7 +57,7 @@ def create_session(engine):
     Returns:
         Session: a SQLalchemy session object which can be used to interact with the database
     """
-    logger.info(f"creating session for {engine}...")
+    logger.info(f"Creating session for {engine}...")
     
     Session = sessionmaker(bind=engine)
     return Session()
