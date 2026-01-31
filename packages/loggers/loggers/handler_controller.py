@@ -69,8 +69,6 @@ class HandlerController():
     It also creates individual readable log file paths and handlers for each unique run name.
 
     Attributes:
-        run_name (str): The name of the run given at instantiation. defaults to "main". 
-                        If the run name already exists, the class returns the same path and handler from the last instance.
         run_directory (str): The path to the directory that contains all of the log files for the current run.
         json_file_path (str): The path to the json log file (same for all instances).
         json_file_handler (logging.FileHandler): FileHandler for json log file (same for all instances). 
@@ -172,6 +170,31 @@ class HandlerController():
             cls.handlers[name] = handler
         else:
             raise KeyError(f"Handler {name} already in handlers: {list(cls.handlers.keys())}")
+        
+    @classmethod
+    def _reset(cls):
+        """Resets class variables. Used for testing."""
+        # Close any stored handlers (readable/stream)
+        handlers = getattr(cls, "handlers", {}) or {}
+        for k, h in list(handlers.items()):
+            try:
+                h.flush()
+                h.close()
+            except Exception:
+                pass
+        cls.handlers = {}
+
+        # If the class has been initialized at some point we can safely reset.
+        if cls._initialized:
+            cls.log_datetime_stamp = ""
+            cls.run_directory = ""
+            cls.json_file_path = ""
+            cls.stream_handler = None
+            cls.json_file_handler = None
+
+        # Reset initialization to False
+        cls._initialized = False
+        
 
 
     def __init__(self, log_directory: str=LOG_FILE_DEFAULT_DIRECTORY):

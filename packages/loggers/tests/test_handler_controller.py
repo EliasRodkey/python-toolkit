@@ -51,7 +51,7 @@ def test_handler():
             handler_controller.get_handler(name).close()
             logger.removeHandler(handler_controller.handlers[name])
 
-        del handler_controller
+        handler_controller._reset()
         clear_logs()
 
 
@@ -94,13 +94,13 @@ class TestHandlerControler:
 
         # Create and configure a new logger with a different run name
         logger_2 = logging.getLogger("test_logger_2")
-        log_controller.add_file_handler("thread_2")
-        logger_2.addHandler(log_controller.get_handler("thread_2"))
+        log_controller.add_file_handler("file_2")
+        logger_2.addHandler(log_controller.get_handler("file_2"))
 
         logger_2.debug("Debug message")
 
         # Check that the new readable log file was created and is accessible from the original log controller obj
-        readable_file_path_2 = log_controller.get_handler("thread_2").baseFilename
+        readable_file_path_2 = log_controller.get_handler("file_2").baseFilename
         assert os.path.exists(readable_file_path_2)
     
 
@@ -132,7 +132,7 @@ class TestHandlerControler:
         log_controller.add_file_handler("main")
     
 
-    def test_remove_file_handler_doesnt_exist(slef, test_handler):
+    def test_remove_file_handler_doesnt_exist(self, test_handler):
         """Tries to remove a file handler that doesn't exist in the controller."""
         log_controller = test_handler
 
@@ -142,3 +142,13 @@ class TestHandlerControler:
         except Exception as e:
             assert isinstance(e, KeyError)
 
+
+    def test_reset_handler_controller(self, test_handler):
+        """Tests the _reset method"""
+        log_controller = test_handler
+
+        log_controller._reset()
+
+        assert log_controller._initialized == False
+        assert log_controller.handlers == {}
+        assert log_controller.json_file_handler == None

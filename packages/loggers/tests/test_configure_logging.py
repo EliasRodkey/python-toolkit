@@ -48,7 +48,7 @@ def test_handler():
             handler_controller.get_handler(name).close()
             logger.removeHandler(handler_controller.handlers[name])
         
-        del handler_controller
+        handler_controller._reset()
         clear_logs()
 
 
@@ -90,7 +90,7 @@ def test_json_log_file_creation(test_handler):
     with open(log_controller.json_file_path, "r") as file:
         data = [json.loads(line) for line in file if line.strip()]
 
-    assert len(data) == 7, "Missing log entries"
+    assert len(data) == 7
     
     for entry in data:
         assert "timestamp" in entry, "missing log entry info"
