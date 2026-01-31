@@ -8,10 +8,9 @@ import logging
 import pytest
 
 from loggers.json_log_parser import JSONLogParser, LogRecord
-from loggers.logger_configs import configure_logger
+from loggers.handler_controller import HandlerController
+from loggers.configure_logging import configure_logging
 from loggers.utils import clear_logs, add_performance_level
-
-add_performance_level()
 
 
 @pytest.fixture()
@@ -20,8 +19,9 @@ def test_json_log_parsing():
     
     try:
         # Setup: create log folders and files and configure logger, register log messages
+        add_performance_level()
         logger = logging.getLogger(__name__)
-        log_controller = configure_logger(logger)
+        handler_controller = configure_logging()
 
         logger.debug("Something is happening behind the scenes...", extra={"debug_num": 1})
         logger.info("This message contains some extra information", extra={"var_1" : True, "var_2" : "ERROR"})
@@ -43,9 +43,9 @@ def test_json_log_parsing():
         logger.performance("FINALY FUNCTION PERFORMANCE")
         logger.critical("SHUTTING DOWN BEEP BOOP")
 
-        log_parser = JSONLogParser(log_controller.json_file_path)
+        log_parser = JSONLogParser(handler_controller.json_file_path)
 
-        yield logger, log_controller, log_parser
+        yield logger, handler_controller, log_parser
 
     except Exception as e:
         print(e)
@@ -54,19 +54,20 @@ def test_json_log_parsing():
     finally:
         # Teardown: Ensure the session is closed and the files are deleted
         # pass
-        log_controller.handlers["json"].flush()
-        log_controller.handlers["json"].close()
-        logger.removeHandler(log_controller.handlers["json"])
+        handler_controller.handlers["json"].flush()
+        handler_controller.handlers["json"].close()
+        logger.removeHandler(handler_controller.handlers["json"])
 
-        log_controller.handlers["stream"].flush()
-        log_controller.handlers["stream"].close()
-        logger.removeHandler(log_controller.handlers["stream"])
+        handler_controller.handlers["stream"].flush()
+        handler_controller.handlers["stream"].close()
+        logger.removeHandler(handler_controller.handlers["stream"])
 
-        for name, handler in log_controller.handlers["readable"].items():
+        for name, handler in handler_controller.handlers["readable"].items():
             handler.flush()
             handler.close()
             logger.removeHandler(handler)
 
+        handler_controller._reset()
         clear_logs()
 
 
