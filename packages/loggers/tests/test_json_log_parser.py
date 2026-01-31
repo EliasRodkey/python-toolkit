@@ -21,7 +21,7 @@ def test_json_log_parsing():
         # Setup: create log folders and files and configure logger, register log messages
         add_performance_level()
         logger = logging.getLogger(__name__)
-        log_controller = configure_logging(logger)
+        log_controller = configure_logging()
 
         logger.debug("Something is happening behind the scenes...", extra={"debug_num": 1})
         logger.info("This message contains some extra information", extra={"var_1" : True, "var_2" : "ERROR"})

@@ -51,7 +51,8 @@ def test_handler():
             handler_controller.get_handler(name).close()
             logger.removeHandler(handler_controller.handlers[name])
 
-        # clear_logs()
+        del handler_controller
+        clear_logs()
 
 
 class TestHandlerControler:

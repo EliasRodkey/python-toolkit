@@ -38,6 +38,7 @@ def configure_logging(
 
     # Configure root logger with standardized handlers
     root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
 
     # Add handlers to the logger
     root_logger.addHandler(log_controller.get_handler("main"))
