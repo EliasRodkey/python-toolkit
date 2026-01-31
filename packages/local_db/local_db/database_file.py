@@ -23,17 +23,13 @@ import sqlite3
 # Third-party imports
 import os
 
-# Import logging dependencies
-import logging
-from loggers import configure_logger, LoggingHandlerController
-
 # local imports
 from . import DEFAULT_DB_DIRECTORY
 from .utils import LoggingExtras, check_db_exists, is_db_file
 
 # Initialize module logger
+import logging
 logger = logging.getLogger(__name__)
-log_handler_controller: LoggingHandlerController = configure_logger(logger)
 
 
 

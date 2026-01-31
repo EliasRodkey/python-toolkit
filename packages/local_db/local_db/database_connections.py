@@ -9,11 +9,6 @@ Functions:
     - create_session: creates and returns a SQLalchemy Session class object
 """
 
-
-# Import logging dependencies
-import logging
-from loggers import configure_logger, LoggingHandlerController
-
 # Third-Party library imports
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -22,10 +17,9 @@ from sqlalchemy.orm import sessionmaker
 from local_db import DEFAULT_DB_DIRECTORY
 from local_db.utils import LoggingExtras
 
-
+# Initialize module logger
+import logging
 logger = logging.getLogger(__name__)
-log_handler_controller: LoggingHandlerController = configure_logger(logger)
-
 
 
 # Functions

@@ -21,16 +21,12 @@ import pandas as pd
 from sqlalchemy import Column, Integer, Float, String, Boolean, DateTime, LargeBinary, create_engine
 from sqlalchemy.inspection import inspect
 
-# Import logging dependencies
-import logging
-from loggers import configure_logger, LoggingHandlerController
-
 # Local imports
 from . import DEFAULT_DB_DIRECTORY
 
 # Initiate module logger
+import logging
 logger = logging.getLogger(__name__)
-log_handler_controller: LoggingHandlerController = configure_logger(logger)
 
 
 

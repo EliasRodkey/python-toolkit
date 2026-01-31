@@ -20,10 +20,6 @@ from typing import List, Any
 import pandas as pd
 import sqlalchemy
 
-# Import logging dependencies
-import logging
-from loggers import configure_logger
-
 # local imports
 from local_db.database_connections import create_engine_conn, create_session
 from local_db.base_table import BaseTable
@@ -32,8 +28,8 @@ from local_db.utils import LoggingExtras, map_dtype_list_to_sql, orm_list_to_dat
 
 
 # Initialize module logger
+import logging
 logger = logging.getLogger(__name__)
-configure_logger(logger)
 
 
 
