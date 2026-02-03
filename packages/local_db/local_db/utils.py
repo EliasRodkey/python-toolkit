@@ -32,13 +32,12 @@ logger = logging.getLogger(__name__)
 
 class LoggingExtras(str, Enum):
     """An enum class which holds the different logging 'extra' field identifiers"""
-    TABLE_CLASS = "table_class"
+    TABLE_NAME = "table_name"
     FILTERS = "filters"
     ATTRIBUTES = "attributes"
     ITEM_ID = "item_id"
     USE_OR = "use_or"
-    FILE_PATH = "file_path"
-    FILE_NAME = "file_name"
+    FILE = "file"
     COLUMNS = "columns"
 
     def __str__(self):
@@ -58,7 +57,7 @@ def check_db_exists(db_filename:str, db_dir:str=DEFAULT_DB_DIRECTORY) -> bool:
     Returns:
         bool: True if the database file exists in the directory, False otherwise
     """
-    logger.info(f"Checking if {db_filename} exists in {db_dir}...", extra={LoggingExtras.FILE_PATH: os.path.join(db_dir, db_filename)})
+    logger.info(f"Checking if {db_filename} exists in {db_dir}...", extra={LoggingExtras.FILE: os.path.join(db_dir, db_filename)})
 
     # Initialize return variables
     exists = False
@@ -86,7 +85,7 @@ def is_db_file(filename:str) -> bool:
     """
     try:
         # Check if filename is a string that ends with .db
-        logger.debug(f"Checking if {filename} is a .db file...", extra={LoggingExtras.FILE_NAME: filename})
+        logger.debug(f"Checking if {filename} is a .db file...", extra={LoggingExtras.FILE: filename})
         return filename.lower().endswith(".db")
     
     except AttributeError as e:

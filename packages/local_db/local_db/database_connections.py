@@ -35,7 +35,7 @@ def create_engine_conn(relative_db_path:str=DEFAULT_DB_DIRECTORY) -> object:
     """
 
     logger.info(f"Creating connection engine to {relative_db_path}...", extra={
-                                                                        LoggingExtras.FILE_PATH: relative_db_path
+                                                                        LoggingExtras.FILE: relative_db_path
                                                                     })
 
     return create_engine(f"sqlite:///{relative_db_path}")

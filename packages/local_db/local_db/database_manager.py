@@ -3,7 +3,7 @@
 local_db.database_manager.py
 
 This module contains a database object class.
-logger in this module used LoggingExtras.TABLE_CLASS to refer to the current table class name in json logging.
+logger in this module used LoggingExtras.TABLE_NAME to refer to the current table class name in json logging.
 
 Classes:
     - DatabaseManager: a class object which allows for the following actions to be performed:
@@ -94,7 +94,7 @@ class DatabaseManager():
                 # Handle the IntegrityError if the item already exists in the database
                 self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
                 logger.exception(f"Item already exists in database.", extra={
-                                                                        LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                        LoggingExtras.TABLE_NAME: self.table_name, 
                                                                         LoggingExtras.ATTRIBUTES: kwargs
                                                                     })
                 raise e
@@ -102,7 +102,7 @@ class DatabaseManager():
             finally:
                 self.session.commit() # Commit the changes to the database
                 logger.info(f"Item added to database.", extra={
-                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                            LoggingExtras.TABLE_NAME: self.table_name, 
                                                             LoggingExtras.ATTRIBUTES: kwargs
                                                         })
     
@@ -144,7 +144,7 @@ class DatabaseManager():
                 # Handle the IntegrityError if the item already exists in the database
                 self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
                 logger.exception(f"Dubplicates detected in : {self.table_name}.", extra={
-                                                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                    LoggingExtras.TABLE_NAME: self.table_name, 
                                                                                     LoggingExtras.COLUMNS: df.columns.tolist()
                                                                                 })
                 raise e
@@ -152,7 +152,7 @@ class DatabaseManager():
             finally:
                 self.session.commit() # Commit the changes to the database
                 logger.info(f"DataFrame appended to database: {self.table_name}.", extra={
-                                                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                    LoggingExtras.TABLE_NAME: self.table_name, 
                                                                                     LoggingExtras.COLUMNS: df.columns.tolist()
                                                                                 })        
 
@@ -164,14 +164,14 @@ class DatabaseManager():
         Returns:
             list[BaseTable] | None: A list of all BaseTable items in the database table or None if table is empty.
         """
-        logger.debug(f"Fetching all items from database.", extra={LoggingExtras.TABLE_CLASS: self.table_class})
+        logger.debug(f"Fetching all items from database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
         result = self.session.query(self.table_class).all()
         if result != []:
-            logger.debug(f"All items retrieved from database: {self.table_name}.", extra={LoggingExtras.TABLE_CLASS: self.table_class})
+            logger.debug(f"All items retrieved from database: {self.table_name}.", extra={LoggingExtras.TABLE_NAME: self.table_name})
             return self.session.query(self.table_class).all()
         else:
-            logger.warning(f"No items found in database: {self.table_name}.", extra={LoggingExtras.TABLE_CLASS: self.table_class})
+            logger.warning(f"No items found in database: {self.table_name}.", extra={LoggingExtras.TABLE_NAME: self.table_name})
             return None
     
 
@@ -193,13 +193,13 @@ class DatabaseManager():
         # If the item exists, return it; otherwise, return None
         if item:
             logger.debug(f"Item found in database by ID: {item_id}.", extra={
-                                                                        LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                        LoggingExtras.TABLE_NAME: self.table_name, 
                                                                         LoggingExtras.ITEM_ID: item_id
                                                                         })
             return item
         else:
             logger.warning(f"Item not found in database by ID: {item_id}.", extra={
-                                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                            LoggingExtras.TABLE_NAME: self.table_name, 
                                                                             LoggingExtras.ITEM_ID: item_id
                                                                         })
             return None
@@ -224,14 +224,14 @@ class DatabaseManager():
         if query:
             # If the query returns results, return them as a list
             logger.debug("Items found in database by using attributes.", extra={
-                                                                                LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                LoggingExtras.TABLE_NAME: self.table_name, 
                                                                                 LoggingExtras.ATTRIBUTES: kwargs
                                                                             })
             return query.all()
         else:
             # If no results are found, return an empty list
             logger.warning("No items found in database by using attributes.", extra={
-                                                                                LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                LoggingExtras.TABLE_NAME: self.table_name, 
                                                                                 LoggingExtras.ATTRIBUTES: kwargs
                                                                             })
             return None
@@ -250,7 +250,7 @@ class DatabaseManager():
         Returns:
             list[BaseTable] | None: A list of all BaseTable items in the database table or None if table is empty.
         """
-        logger.debug(f"Applying filters to database.", extra={LoggingExtras.TABLE_CLASS: self.table_class, LoggingExtras.FILTERS: filters})
+        logger.debug(f"Applying filters to database.", extra={LoggingExtras.TABLE_NAME: self.table_name, LoggingExtras.FILTERS: filters})
 
         clauses = []
         query = self.session.query(self.table_class)
@@ -260,7 +260,7 @@ class DatabaseManager():
             # Validate column name
             if not hasattr(self.table_class, column_name):
                 logger.error(f"Invalid column in filters: {column_name}.", extra={
-                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                            LoggingExtras.TABLE_NAME: self.table_name, 
                                                             LoggingExtras.FILTERS: filters, 
                                                             LoggingExtras.COLUMNS: column_name
                                                             })
@@ -281,7 +281,7 @@ class DatabaseManager():
                 condition = self._OPERATOR_MAP[op](column, value)
             except KeyError:
                 logger.exception(f"Unsupported operator in filters: {op}.", extra={
-                                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                    LoggingExtras.TABLE_NAME: self.table_name, 
                                                                     LoggingExtras.FILTERS: filters, 
                                                                     "operator": op
                                                                 })
@@ -296,7 +296,7 @@ class DatabaseManager():
             query = query.filter(sqlalchemy.and_(*clauses))
 
         logger.debug("Filters successfully applied to database with filters", extra={
-                                                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                    LoggingExtras.TABLE_NAME: self.table_name, 
                                                                                     LoggingExtras.FILTERS: filters
                                                                                 })
         result = query.all() 
@@ -304,7 +304,7 @@ class DatabaseManager():
             return result
         else:
             logger.warning("No items found in database after applying filters.", extra={
-                                                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                    LoggingExtras.TABLE_NAME: self.table_name, 
                                                                                     LoggingExtras.FILTERS: filters
                                                                                 })
             return  None
@@ -319,7 +319,7 @@ class DatabaseManager():
         """
 
         # Fetch all items from the database and convert them to a DataFrame
-        logger.debug("Converting database table to DataFrame.", extra={LoggingExtras.TABLE_CLASS: self.table_class})
+        logger.debug("Converting database table to DataFrame.", extra={LoggingExtras.TABLE_NAME: self.table_name})
         return pd.read_sql(self.session.query(self.table_class).statement, self.session.bind)
 
 
@@ -347,7 +347,7 @@ class DatabaseManager():
             **kwargs: Keyword arguments representing the attributes to be updated.
         """
         logger.debug("Updating item in database.", extra={
-                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                    LoggingExtras.TABLE_NAME: self.table_name, 
                                                     LoggingExtras.ATTRIBUTES: kwargs
                                                 })
         ## Check to make sure the dictionary keys match the database table columns
@@ -370,14 +370,14 @@ class DatabaseManager():
             # Handle the IntegrityError if the item already exists in the database
             self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
             logger.exception("Unable to update item, value already exists in database.", extra={
-                                                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                            LoggingExtras.TABLE_NAME: self.table_name, 
                                                                                             LoggingExtras.ATTRIBUTES: kwargs
                                                                                         })
             raise e
         
         finally:
             self.session.commit() # Commit the changes to the database
-            logger.info(f"Item updated in database with ID {item_id}.", extra={LoggingExtras.TABLE_CLASS: self.table_class, LoggingExtras.ATTRIBUTES: kwargs})
+            logger.info(f"Item updated in database with ID {item_id}.", extra={LoggingExtras.TABLE_NAME: self.table_name, LoggingExtras.ATTRIBUTES: kwargs})
 
 
     def delete_item(self, item_id):
@@ -396,12 +396,12 @@ class DatabaseManager():
             self.session.delete(item)
             self.session.commit()
             logger.info(f"Item deleted from database with ID: {item_id}.", extra={
-                                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                            LoggingExtras.TABLE_NAME: self.table_name, 
                                                                             LoggingExtras.ITEM_ID: item_id
                                                                         })
         else:
             logger.warning(f"Item not found in database with ID: {item_id}.", extra={
-                                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                            LoggingExtras.TABLE_NAME: self.table_name, 
                                                                             LoggingExtras.ITEM_ID: item_id
                                                                         })
 
@@ -415,7 +415,7 @@ class DatabaseManager():
                       Keys should match column names and values should match the column types.
         """
         logger.debug("Deleting items from database with given attributes", extra={
-                                                                            LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                            LoggingExtras.TABLE_NAME: self.table_name, 
                                                                             LoggingExtras.ATTRIBUTES: kwargs
                                                                         })
 
@@ -428,13 +428,13 @@ class DatabaseManager():
                 self.session.delete(item)
             self.session.commit()
             logger.info("Items deleted from database with given attributes.", extra={
-                                                                                LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                LoggingExtras.TABLE_NAME: self.table_name, 
                                                                                 LoggingExtras.ATTRIBUTES: kwargs
                                                                             })
 
         else:
             logger.warning("No items found in database with given attributes.", extra={
-                                                                                LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                LoggingExtras.TABLE_NAME: self.table_name, 
                                                                                 LoggingExtras.ATTRIBUTES: kwargs
                                                                             })
 
@@ -450,7 +450,7 @@ class DatabaseManager():
         """
 
         logger.debug("Deleting items from database using filters.", extra={
-                                                                    LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                    LoggingExtras.TABLE_NAME: self.table_name, 
                                                                     LoggingExtras.FILTERS: filters, 
                                                                     LoggingExtras.USE_OR: use_or
                                                                 })
@@ -463,14 +463,14 @@ class DatabaseManager():
                 self.session.delete(item)
             self.session.commit()
             logger.info("Items deleted from database using filters.", extra={
-                                                                        LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                        LoggingExtras.TABLE_NAME: self.table_name, 
                                                                         LoggingExtras.FILTERS: filters, 
                                                                         LoggingExtras.USE_OR: use_or
                                                                     })
         
         else:
             logger.warning("No items found in database given with filters.", extra={
-                                                                                LoggingExtras.TABLE_CLASS: self.table_class, 
+                                                                                LoggingExtras.TABLE_NAME: self.table_name, 
                                                                                 LoggingExtras.FILTERS: filters, 
                                                                                 LoggingExtras.USE_OR: use_or
                                                                             })
@@ -485,7 +485,7 @@ class DatabaseManager():
         num_deleted = self.session.query(self.table_class).delete()
         self.session.commit()
         logger.info(f"All items deleted from database table, total items deleted: {num_deleted}", extra={
-                                                                                                    LoggingExtras.TABLE_CLASS: self.table_class
+                                                                                                    LoggingExtras.TABLE_NAME: self.table_name
                                                                                                 })
 
 
@@ -496,8 +496,8 @@ class DatabaseManager():
         self.engine = create_engine_conn(self.file.file_path)
         self.session = create_session(self.engine)
         logger.info(f"DatabaseManager session started with table: {self.table_name}", extra={
-                                                                                                        LoggingExtras.TABLE_CLASS: self.table_class,
-                                                                                                        LoggingExtras.FILE_PATH: self.file.name
+                                                                                                        LoggingExtras.TABLE_NAME: self.table_name,
+                                                                                                        LoggingExtras.FILE: self.file.name
                                                                                                     })
 
 
@@ -508,8 +508,8 @@ class DatabaseManager():
         self.session.close()
         self.engine.dispose()
         logger.info(f"DatabaseManager session ended with table: {self.table_name}", extra={
-                                                                                                LoggingExtras.TABLE_CLASS: self.table_class,
-                                                                                                LoggingExtras.FILE_PATH: self.file.name
+                                                                                                LoggingExtras.TABLE_NAME: self.table_name,
+                                                                                                LoggingExtras.FILE: self.file.name
                                                                                             })
     
 
