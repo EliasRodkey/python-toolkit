@@ -93,18 +93,12 @@ class DatabaseManager():
             except sqlalchemy.exc.IntegrityError as e:
                 # Handle the IntegrityError if the item already exists in the database
                 self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
-                logger.exception(f"Item already exists in database.", extra={
-                                                                        LoggingExtras.TABLE_NAME: self.table_name, 
-                                                                        LoggingExtras.ATTRIBUTES: {k: type(v) for k, v in kwargs}
-                                                                    })
+                logger.exception(f"Item already exists in database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
                 raise e
             
             finally:
                 self.session.commit() # Commit the changes to the database
-                logger.info(f"Item added to database.", extra={
-                                                            LoggingExtras.TABLE_NAME: self.table_name, 
-                                                            LoggingExtras.ATTRIBUTES: {k: type(v) for k, v in kwargs}
-                                                        })
+                logger.info(f"Item added to database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
     
 
     def add_multiple_items(self, entries: List[dict[str, Any]]):
@@ -223,17 +217,11 @@ class DatabaseManager():
 
         if query:
             # If the query returns results, return them as a list
-            logger.debug("Items found in database by using attributes.", extra={
-                                                                                LoggingExtras.TABLE_NAME: self.table_name, 
-                                                                                LoggingExtras.ATTRIBUTES: {k: type(v) for k, v in kwargs}
-                                                                            })
+            logger.debug("Items found in database by using attributes.", extra={LoggingExtras.TABLE_NAME: self.table_name})
             return query.all()
         else:
             # If no results are found, return an empty list
-            logger.warning("No items found in database by using attributes.", extra={
-                                                                                LoggingExtras.TABLE_NAME: self.table_name, 
-                                                                                LoggingExtras.ATTRIBUTES: {k: type(v) for k, v in kwargs}
-                                                                            })
+            logger.warning("No items found in database by using attributes.", extra={LoggingExtras.TABLE_NAME: self.table_name})
             return None
 
 
@@ -342,7 +330,7 @@ class DatabaseManager():
         """
         logger.debug("Updating item in database.", extra={
                                                     LoggingExtras.TABLE_NAME: self.table_name, 
-                                                    LoggingExtras.ATTRIBUTES: {k: type(v) for k, v in kwargs}
+                                                    
                                                 })
         ## Check to make sure the dictionary keys match the database table columns
         if self._dict_columns_match(kwargs):
@@ -363,15 +351,12 @@ class DatabaseManager():
         except sqlalchemy.exc.IntegrityError as e:
             # Handle the IntegrityError if the item already exists in the database
             self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
-            logger.exception("Unable to update item, value already exists in database.", extra={
-                                                                                            LoggingExtras.TABLE_NAME: self.table_name, 
-                                                                                            LoggingExtras.ATTRIBUTES: {k: type(v) for k, v in kwargs}
-                                                                                        })
+            logger.exception("Unable to update item, value already exists in database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
             raise e
         
         finally:
             self.session.commit() # Commit the changes to the database
-            logger.info(f"Item updated in database with ID {item_id}.", extra={LoggingExtras.TABLE_NAME: self.table_name, LoggingExtras.ATTRIBUTES: {k: type(v) for k, v in kwargs}})
+            logger.info(f"Item updated in database with ID {item_id}.", extra={LoggingExtras.TABLE_NAME: self.table_name, })
 
 
     def delete_item(self, item_id):
@@ -408,10 +393,7 @@ class DatabaseManager():
             **kwargs: Keyword arguments representing the attributes to filter by. 
                       Keys should match column names and values should match the column types.
         """
-        logger.debug("Deleting items from database with given attributes", extra={
-                                                                            LoggingExtras.TABLE_NAME: self.table_name, 
-                                                                            LoggingExtras.ATTRIBUTES: {k: type(v) for k, v in kwargs}
-                                                                        })
+        logger.debug("Deleting items from database with given attributes", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
         # Create a query object to filter items based on the provided attributes
         query = self.session.query(self.table_class).filter_by(**kwargs)
@@ -421,16 +403,10 @@ class DatabaseManager():
             for item in query.all():
                 self.session.delete(item)
             self.session.commit()
-            logger.info("Items deleted from database with given attributes.", extra={
-                                                                                LoggingExtras.TABLE_NAME: self.table_name, 
-                                                                                LoggingExtras.ATTRIBUTES: {k: type(v) for k, v in kwargs}
-                                                                            })
+            logger.info("Items deleted from database with given attributes.", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
         else:
-            logger.warning("No items found in database with given attributes.", extra={
-                                                                                LoggingExtras.TABLE_NAME: self.table_name, 
-                                                                                LoggingExtras.ATTRIBUTES: {k: type(v) for k, v in kwargs}
-                                                                            })
+            logger.warning("No items found in database with given attributes.", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
 
     def delete_items_by_filter(self, filters: dict, use_or=False):
@@ -475,9 +451,7 @@ class DatabaseManager():
         # Delete all items from the database table
         num_deleted = self.session.query(self.table_class).delete()
         self.session.commit()
-        logger.info(f"All items deleted from database table, total items deleted: {num_deleted}", extra={
-                                                                                                    LoggingExtras.TABLE_NAME: self.table_name
-                                                                                                })
+        logger.info(f"All items deleted from database table, total items deleted: {num_deleted}", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
 
     def start_session(self):
