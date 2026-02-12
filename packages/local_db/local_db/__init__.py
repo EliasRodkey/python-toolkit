@@ -11,7 +11,7 @@ Modules:
     - utils.py:
 """
 # Metadata
-__version__ = "1.2.3"
+__version__ = "1.2.4"
 __author__ = "Elias Rodkey"
 
 # Package Level Constants
@@ -24,7 +24,7 @@ from loggers import configure_logging
 handler_controller = configure_logging(log_directory=LOG_DIRECTORY)
 
 # Imports modules, functions, and classes for clean package interface
-from .base_table import BaseTable, ESQLDataTypes
+from .base_table import BaseTable, ESQLDataTypes, DuplicateError
 from .database_connections import create_engine_conn, create_session
 from .database_file import DatabaseFile
 from .database_manager import DatabaseManager
@@ -39,5 +39,6 @@ __all__ = [
     "DatabaseFile",
     "DatabaseManager",
     "BaseTable",
-    "ESQLDataTypes"
+    "ESQLDataTypes",
+    "DuplicateError"
 ]

@@ -95,3 +95,12 @@ class BaseTable(Base):
     def column_types(self):
         """Returns a dictionary mapping column names to their types for the instance."""
         return self.get_column_types()
+
+
+
+class DuplicateError(Exception):
+    def __init__(self, value, table: BaseTable, message: str="Duplicate value detected in database:"):
+        self.value = value
+        self.table_name = table.__tablename__
+        self.message = f"{message} {self.table_name}, value: {value}"
+        super().__init__(self.message)
