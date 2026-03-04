@@ -22,7 +22,7 @@ import sqlalchemy
 
 # local imports
 from local_db.database_connections import create_engine_conn, create_session
-from local_db.base_table import BaseTable, DuplicateError
+from local_db.base_table import BaseTable, DuplicateError, ItemNotFoundError
 from local_db.database_file import DatabaseFile
 from local_db.utils import LoggingExtras, map_dtype_list_to_sql, orm_list_to_dataframe
 
@@ -36,18 +36,25 @@ logger = logging.getLogger(__name__)
 class DatabaseManager():
     """
     Generic Database manager wrapper class that allows for simple database operations to be performed on a local database file.
+    Supports use as a context manager (with statement) for automatic session cleanup.
 
     Functions:
         - add_item: Adds a new item to the database.
         - add_multiple_items: Adds multiple new items to the database.
         - append_dataframe: Appends a pandas DataFrame to the database table.
         - fetch_all_items: Fetches all items from the database table.
-        - fetch_item_by_id: Fetches an item from the database based on its ID.
+        - fetch_item_by_id: Fetches an item by ID; raises ItemNotFoundError if missing.
         - fetch_items_by_attribute: Fetches items from the database based on specified attributes.
         - filter_items: Apply N filters with operators and return ORM objects.
         - to_dataframe: Converts the database table to a pandas DataFrame.
+        - upsert: Inserts a new item or updates an existing one based on a match dict.
+        - count_items: Returns the count of items matching given attributes.
+        - exists: Returns True if any item matching given attributes exists.
         - update_item: Updates an item in the database based on its ID.
         - delete_item: Deletes an item from the database based on its ID.
+        - delete_items_by_attribute: Deletes items matching given attributes.
+        - delete_items_by_filter: Deletes items matching N filter conditions.
+        - clear_table: Deletes all items from the table.
         - start_session: Starts a new database session.
         - end_session: Ends the database session and closes the connection.
     """
@@ -165,34 +172,35 @@ class DatabaseManager():
         return result
     
 
-    def fetch_item_by_id(self, item_id) -> BaseTable | None:
+    def fetch_item_by_id(self, item_id) -> BaseTable:
         """
         Fetches an item from the database based on its ID.
         Requires the table has "id" column with unique values.
-        
+
         Args:
             item_id (int): The ID of the item to be fetched.
 
         Returns:
-            list[BaseTable] | None: A BaseTable item with matching id in the database table or None if table is empty.
+            BaseTable: The item with the matching ID.
+
+        Raises:
+            ItemNotFoundError: If no item with the given ID exists in the table.
         """
 
-        # Locate the item in the database using its ID
         item = self.session.query(self.table_class).filter_by(id=item_id).first()
 
-        # If the item exists, return it; otherwise, return None
         if item:
             logger.debug(f"Item found in database by ID: {item_id}.", extra={
-                                                                        LoggingExtras.TABLE_NAME: self.table_name, 
+                                                                        LoggingExtras.TABLE_NAME: self.table_name,
                                                                         LoggingExtras.ITEM_ID: item_id
                                                                     })
             return item
-        else:
-            logger.warning(f"Item not found in database by ID: {item_id}.", extra={
-                                                                            LoggingExtras.TABLE_NAME: self.table_name, 
-                                                                            LoggingExtras.ITEM_ID: item_id
-                                                                        })
-            return None
+
+        logger.warning(f"Item not found in database by ID: {item_id}.", extra={
+                                                                        LoggingExtras.TABLE_NAME: self.table_name,
+                                                                        LoggingExtras.ITEM_ID: item_id
+                                                                    })
+        raise ItemNotFoundError(item_id, self.table_class)
     
 
     def fetch_items_by_attribute(self,**kwargs) -> List[BaseTable]:
@@ -224,8 +232,8 @@ class DatabaseManager():
 
         Args:
             filters (dict): A dictionary where keys are column names and values are tuples of (operator, value).
-                            Supported operators: "==", "!=", ">", ">=", "<", "<=", "in", "like" (See _OPERATOR_MAP).
-                            if value is no a tuple, equality is assumed.
+                            Supported operators: "==", "!=", ">", ">=", "<", "<=", "in", "like", "ilike" (See _OPERATOR_MAP).
+                            if value is not a tuple, equality is assumed.
             use_or (bool): Whether to combine filters with OR logic instead of AND. Default is False.
 
         Returns:
@@ -233,48 +241,15 @@ class DatabaseManager():
         """
         logger.debug(f"Applying filters to database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
-        clauses = []
+        clauses = self._build_filter_clauses(filters)
         query = self.session.query(self.table_class)
 
-        for column_name, spec in filters.items():
-
-            # Validate column name
-            if not hasattr(self.table_class, column_name):
-                logger.error(f"Invalid column in filters: {column_name}.", extra={
-                                                            LoggingExtras.TABLE_NAME: self.table_name, 
-                                                            LoggingExtras.COLUMNS: column_name
-                                                            })
-                raise AttributeError(f"Invalid column: {column_name}")
-
-            # Loop over filters and build conditions
-            column = getattr(self.table_class, column_name)
-
-            if isinstance(spec, tuple):
-                # If the spec is a tuple, unpack the operator and value.
-                op, value = spec
-            else:
-                # If not, assume operator is equals.
-                op, value = "==", spec
-
-            try:
-                # Create condition using the _OPERATOR_MAP
-                condition = self._OPERATOR_MAP[op](column, value)
-            except KeyError:
-                logger.exception(f"Unsupported operator in filters: {op}.", extra={
-                                                                    LoggingExtras.TABLE_NAME: self.table_name,
-                                                                    "operator": op
-                                                                })
-                raise ValueError(f"Unsupported operator: {op}")
-
-            clauses.append(condition)
-        
-        if use_or: # Combine clauses with OR logic if use_or
+        if use_or:
             query = query.filter(sqlalchemy.or_(*clauses))
-
-        else: # Combine clauses with AND logic
+        else:
             query = query.filter(sqlalchemy.and_(*clauses))
 
-        logger.debug("Filters successfully applied to database with filters", extra={LoggingExtras.TABLE_NAME: self.table_name})
+        logger.debug("Filters successfully applied to database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
         result = query.all()
         if not result:
             logger.warning("No items found in database after applying filters.", extra={LoggingExtras.TABLE_NAME: self.table_name})
@@ -386,16 +361,11 @@ class DatabaseManager():
         """
         logger.debug("Deleting items from database with given attributes", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
-        # Create a query object to filter items based on the provided attributes
-        items = self.session.query(self.table_class).filter_by(**kwargs).all()
+        num_deleted = self.session.query(self.table_class).filter_by(**kwargs).delete(synchronize_session="fetch")
+        self.session.commit()
 
-        # If the query returns results, delete them from the session and commit the changes to the database
-        if items:
-            for item in items:
-                self.session.delete(item)
-            self.session.commit()
+        if num_deleted:
             logger.info("Items deleted from database with given attributes.", extra={LoggingExtras.TABLE_NAME: self.table_name})
-
         else:
             logger.warning("No items found in database with given attributes.", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
@@ -406,27 +376,31 @@ class DatabaseManager():
 
         Args:
             filters (dict): A dictionary where keys are column names and values are tuples of (operator, value).
-                            Supported operators: "==", "!=", ">", ">=", "<", "<=", "in", "like" (See _OPERATOR_MAP).
+                            Supported operators: "==", "!=", ">", ">=", "<", "<=", "in", "like", "ilike" (See _OPERATOR_MAP).
             use_or (bool): Whether to combine filters with OR logic instead of AND. Default is False.
         """
 
         logger.debug("Deleting items from database using filters.", extra={
-                                                                    LoggingExtras.TABLE_NAME: self.table_name, 
+                                                                    LoggingExtras.TABLE_NAME: self.table_name,
                                                                     LoggingExtras.USE_OR: use_or
                                                                 })
 
-        # get items to delete using the filter_items method
-        items_to_delete = self.filter_items(filters, use_or=use_or)
+        clauses = self._build_filter_clauses(filters)
+        query = self.session.query(self.table_class)
 
-        if items_to_delete:
-            for item in items_to_delete:
-                self.session.delete(item)
-            self.session.commit()
+        if use_or:
+            query = query.filter(sqlalchemy.or_(*clauses))
+        else:
+            query = query.filter(sqlalchemy.and_(*clauses))
+
+        num_deleted = query.delete(synchronize_session="fetch")
+        self.session.commit()
+
+        if num_deleted:
             logger.info("Items deleted from database using filters.", extra={
-                                                                        LoggingExtras.TABLE_NAME: self.table_name, 
+                                                                        LoggingExtras.TABLE_NAME: self.table_name,
                                                                         LoggingExtras.USE_OR: use_or
                                                                     })
-        
         else:
             logger.warning("No items found in database given with filters.", extra={
                                                                                 LoggingExtras.TABLE_NAME: self.table_name,
@@ -443,6 +417,54 @@ class DatabaseManager():
         num_deleted = self.session.query(self.table_class).delete()
         self.session.commit()
         logger.info(f"All items deleted from database table, total items deleted: {num_deleted}", extra={LoggingExtras.TABLE_NAME: self.table_name})
+
+
+    def upsert(self, match_by: dict, **update_kwargs):
+        """
+        Updates an existing record if found, or inserts a new one if not.
+
+        Args:
+            match_by (dict): Attributes used to locate the existing record (equality match).
+            **update_kwargs: Attributes to set on update, or to merge with match_by on insert.
+        """
+        existing = self.fetch_items_by_attribute(**match_by)
+        if existing:
+            item = existing[0]
+            for key, value in update_kwargs.items():
+                if hasattr(item, key):
+                    setattr(item, key, value)
+            self.session.commit()
+            logger.info("Item upserted (updated) in database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
+        else:
+            self.add_item(**{**match_by, **update_kwargs})
+            logger.info("Item upserted (inserted) in database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
+
+
+    def count_items(self, **kwargs) -> int:
+        """
+        Returns the count of items matching the given attributes.
+
+        Args:
+            **kwargs: Keyword arguments representing the attributes to filter by.
+                      If empty, counts all items in the table.
+
+        Returns:
+            int: The number of matching items.
+        """
+        return self.session.query(self.table_class).filter_by(**kwargs).count()
+
+
+    def exists(self, **kwargs) -> bool:
+        """
+        Returns True if at least one item matching the given attributes exists.
+
+        Args:
+            **kwargs: Keyword arguments representing the attributes to filter by.
+
+        Returns:
+            bool: True if a matching item exists, False otherwise.
+        """
+        return self.count_items(**kwargs) > 0
 
 
     def start_session(self):
@@ -467,6 +489,17 @@ class DatabaseManager():
                                                                                     LoggingExtras.TABLE_NAME: self.table_name,
                                                                                     LoggingExtras.FILE: self.file.name
                                                                                 })
+
+
+    def __enter__(self):
+        """Supports use as a context manager. Returns self."""
+        return self
+
+
+    def __exit__(self, _exc_type, _exc_val, _exc_tb):
+        """Automatically calls end_session() when exiting a with block."""
+        self.end_session()
+        return False
     
 
     def _df_columns_match(self, df: pd.DataFrame) -> bool:
@@ -608,13 +641,55 @@ class DatabaseManager():
     
 
     _OPERATOR_MAP = {
-        "==": lambda c, v: c == v,
-        "!=": lambda c, v: c != v,
-        ">":  lambda c, v: c > v,
-        ">=": lambda c, v: c >= v,
-        "<":  lambda c, v: c < v,
-        "<=": lambda c, v: c <= v,
-        "in": lambda c, v: c.in_(v),
-        "like": lambda c, v: c.like(v)
+        "==":    lambda c, v: c == v,
+        "!=":    lambda c, v: c != v,
+        ">":     lambda c, v: c > v,
+        ">=":    lambda c, v: c >= v,
+        "<":     lambda c, v: c < v,
+        "<=":    lambda c, v: c <= v,
+        "in":    lambda c, v: c.in_(v),
+        "like":  lambda c, v: c.like(v),
+        "ilike": lambda c, v: c.ilike(v),
     }
+
+
+    def _build_filter_clauses(self, filters: dict) -> list:
+        """
+        Builds a list of SQLAlchemy filter conditions from a filters dict.
+
+        Args:
+            filters (dict): A dictionary where keys are column names and values are
+                            tuples of (operator, value) or bare values (equality assumed).
+
+        Returns:
+            list: SQLAlchemy filter conditions.
+
+        Raises:
+            AttributeError: If a column name does not exist on the table.
+            ValueError: If an operator is not in _OPERATOR_MAP.
+        """
+        clauses = []
+        for column_name, spec in filters.items():
+
+            if not hasattr(self.table_class, column_name):
+                logger.error(f"Invalid column in filters: {column_name}.", extra={
+                                                            LoggingExtras.TABLE_NAME: self.table_name,
+                                                            LoggingExtras.COLUMNS: column_name
+                                                        })
+                raise AttributeError(f"Invalid column: {column_name}")
+
+            column = getattr(self.table_class, column_name)
+            op, value = spec if isinstance(spec, tuple) else ("==", spec)
+
+            try:
+                condition = self._OPERATOR_MAP[op](column, value)
+            except KeyError:
+                logger.exception(f"Unsupported operator in filters: {op}.", extra={
+                                                                    LoggingExtras.TABLE_NAME: self.table_name,
+                                                                    "operator": op
+                                                                })
+                raise ValueError(f"Unsupported operator: {op}")
+
+            clauses.append(condition)
+        return clauses
     

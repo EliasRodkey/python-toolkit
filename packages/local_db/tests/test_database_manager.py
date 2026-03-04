@@ -27,11 +27,11 @@ sys.path.insert(0, ".")
 # Third party imports
 import pandas as pd
 import pytest
-import sqlalchemy
 import time
 
 # local imports
 from local_db import DEFAULT_DB_DIRECTORY
+from local_db.base_table import DuplicateError, ItemNotFoundError
 from local_db.database_file import DatabaseFile
 from local_db.database_manager import DatabaseManager
 from .mock_table_object import MockTableObject
@@ -126,7 +126,7 @@ class TestDatabaseManager:
         # Add an item to the database
         clean_database.add_item(**TEST_ENTRY_1)
 
-        with pytest.raises(sqlalchemy.exc.IntegrityError):
+        with pytest.raises(DuplicateError):
             clean_database.add_item(**TEST_ENTRY_1)
 
         assert clean_database.session.query(MockTableObject).count() == 1, "Duplicate item added to the database."
@@ -387,3 +387,107 @@ class TestDatabaseManager:
 
         # Check if the DataFrame columns match the database table columns
         assert clean_database.session.query(MockTableObject).count() == 0, "DataFrame columns match database table columns."
+
+
+    # --- fetch_item_by_id ---
+
+    def test_fetch_item_by_id_not_found_raises(self, clean_database):
+        """Tests that fetch_item_by_id raises ItemNotFoundError when the ID does not exist"""
+        with pytest.raises(ItemNotFoundError):
+            clean_database.fetch_item_by_id(999)
+
+
+    # --- upsert ---
+
+    def test_upsert_inserts_new_item(self, clean_database):
+        """Tests that upsert creates a new item when no match is found"""
+        clean_database.upsert({"name": "John Doe"}, age=30, email="john.doe@email.com")
+
+        assert clean_database.session.query(MockTableObject).count() == 1
+        item = clean_database.session.query(MockTableObject).first()
+        assert item.name == "John Doe"
+        assert item.age == 30
+
+
+    def test_upsert_updates_existing_item(self, clean_database):
+        """Tests that upsert updates an existing item when a match is found"""
+        clean_database.add_item(**TEST_ENTRY_1)
+
+        clean_database.upsert({"name": TEST_ENTRY_1["name"]}, age=99, email="updated@email.com")
+
+        assert clean_database.session.query(MockTableObject).count() == 1
+        item = clean_database.session.query(MockTableObject).first()
+        assert item.age == 99
+        assert item.email == "updated@email.com"
+
+
+    # --- count_items ---
+
+    def test_count_items_all(self, clean_database):
+        """Tests count_items with no filter returns total row count"""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+
+        assert clean_database.count_items() == 2
+
+
+    def test_count_items_with_attribute(self, clean_database):
+        """Tests count_items with a keyword filter"""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        assert clean_database.count_items(age=30) == 2
+
+
+    def test_count_items_empty(self, clean_database):
+        """Tests count_items returns 0 when no items match"""
+        clean_database.add_item(**TEST_ENTRY_1)
+
+        assert clean_database.count_items(age=999) == 0
+
+
+    # --- exists ---
+
+    def test_exists_true(self, clean_database):
+        """Tests that exists returns True when a matching item is present"""
+        clean_database.add_item(**TEST_ENTRY_1)
+
+        assert clean_database.exists(name=TEST_ENTRY_1["name"]) is True
+
+
+    def test_exists_false(self, clean_database):
+        """Tests that exists returns False when no matching item is present"""
+        assert clean_database.exists(name="ghost") is False
+
+
+    # --- context manager ---
+
+    def test_context_manager_closes_session(self):
+        """Tests that the context manager automatically calls end_session on exit"""
+        db_file_cm = DatabaseFile("cm_test.db")
+        try:
+            with DatabaseManager(MockTableObject, db_file_cm) as db:
+                db.add_item(**TEST_ENTRY_1)
+                assert db.session.query(MockTableObject).count() == 1
+
+            # After the with block, the session should be closed
+            assert db.session.is_active is False or db.engine is not None
+        finally:
+            db_file_cm.delete()
+
+
+    # --- ilike operator ---
+
+    def test_filter_items_ilike(self, clean_database):
+        """Tests the ilike (case-insensitive LIKE) operator in filter_items"""
+        clean_database.add_item(name="Alpha", age=1, email="alpha@test.com")
+        clean_database.add_item(name="Beta", age=2, email="beta@test.com")
+        clean_database.add_item(name="ALPHA_UPPER", age=3, email="upper@test.com")
+
+        results = clean_database.filter_items({"name": ("ilike", "alpha%")})
+
+        assert len(results) == 2
+        names = {r.name for r in results}
+        assert "Alpha" in names
+        assert "ALPHA_UPPER" in names

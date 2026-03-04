@@ -104,3 +104,11 @@ class DuplicateError(Exception):
         self.table_name = table.__tablename__
         self.message = f"{message} {self.table_name}, value: {value}"
         super().__init__(self.message)
+
+
+class ItemNotFoundError(Exception):
+    def __init__(self, item_id, table: BaseTable, message: str="Item not found in database:"):
+        self.item_id = item_id
+        self.table_name = table.__tablename__
+        self.message = f"{message} {self.table_name}, id: {item_id}"
+        super().__init__(self.message)
