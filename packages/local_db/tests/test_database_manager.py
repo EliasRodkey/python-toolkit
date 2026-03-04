@@ -238,7 +238,7 @@ class TestDatabaseManager:
         results = clean_database.filter_items({"email": "transport"})
 
         # Assert
-        assert results == None
+        assert results == []
 
 
     def test_filter_items_invalid_column_raises(self, clean_database):

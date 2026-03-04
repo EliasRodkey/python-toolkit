@@ -22,7 +22,7 @@ import sqlalchemy
 
 # local imports
 from local_db.database_connections import create_engine_conn, create_session
-from local_db.base_table import BaseTable
+from local_db.base_table import BaseTable, DuplicateError
 from local_db.database_file import DatabaseFile
 from local_db.utils import LoggingExtras, map_dtype_list_to_sql, orm_list_to_dataframe
 
@@ -89,16 +89,17 @@ class DatabaseManager():
                 # Add the new item to the session and commit the changes to the database
                 self.session.add(new_item)
                 self.session.flush() # Detects if the item already exists in the database
+                logger.info(f"Item added to database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
-            except sqlalchemy.exc.IntegrityError as e:
+            except sqlalchemy.exc.IntegrityError:
                 # Handle the IntegrityError if the item already exists in the database
                 self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
-                logger.exception(f"Item already exists in database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
-                raise e
+                basic_attrs = {k: v for k, v in kwargs.items() if isinstance(v, (str, int, float, bool, type(None)))}
+                logger.error(f"Item already exists in database.", extra={LoggingExtras.TABLE_NAME: self.table_name, LoggingExtras.ATTRIBUTES: basic_attrs})
+                raise DuplicateError(basic_attrs, self.table_class)
             
             finally:
                 self.session.commit() # Commit the changes to the database
-                logger.info(f"Item added to database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
     
 
     def add_multiple_items(self, entries: List[dict[str, Any]]):
@@ -109,12 +110,8 @@ class DatabaseManager():
             **kwargs: Keyword arguments representing the attributes of the item to be added.
         """
 
-        # Create a new instance of the database object class with the provided attributes
         for entry in entries:
             self.add_item(**entry)
-
-        # Commit the changes to the database
-        self.session.commit()
 
 
     def append_dataframe(self, df):
@@ -133,43 +130,42 @@ class DatabaseManager():
             try:
                 # Add the new item to the session and commit the changes to the database
                 self.session.flush() # Detects if the item already exists in the database
-
-            except sqlalchemy.exc.IntegrityError as e:
-                # Handle the IntegrityError if the item already exists in the database
-                self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
-                logger.exception(f"Dubplicates detected in : {self.table_name}.", extra={
-                                                                                    LoggingExtras.TABLE_NAME: self.table_name, 
-                                                                                    LoggingExtras.COLUMNS: df.columns.tolist()
-                                                                                })
-                raise e
-            
-            finally:
-                self.session.commit() # Commit the changes to the database
                 logger.info(f"DataFrame appended to database: {self.table_name}.", extra={
                                                                                     LoggingExtras.TABLE_NAME: self.table_name, 
                                                                                     LoggingExtras.COLUMNS: df.columns.tolist()
-                                                                                })        
+                                                                                })  
+
+            except sqlalchemy.exc.IntegrityError:
+                # Handle the IntegrityError if the item already exists in the database
+                self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
+                logger.error(f"Dubplicates detected in : {self.table_name}.", extra={
+                                                                                    LoggingExtras.TABLE_NAME: self.table_name, 
+                                                                                    LoggingExtras.COLUMNS: df.columns.tolist()
+                                                                                })
+                raise DuplicateError(df.columns.tolist(), self.table_class)
+            
+            finally:
+                self.session.commit() # Commit the changes to the database      
 
 
-    def fetch_all_items(self) -> List[BaseTable] | None:
+    def fetch_all_items(self) -> List[BaseTable]:
         """
         Fetches all items from the database table
-        
+
         Returns:
-            list[BaseTable] | None: A list of all BaseTable items in the database table or None if table is empty.
+            list[BaseTable]: A list of all BaseTable items in the database table, or an empty list if the table is empty.
         """
         logger.debug(f"Fetching all items from database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
         result = self.session.query(self.table_class).all()
-        if result != []:
+        if result:
             logger.debug(f"All items retrieved from database: {self.table_name}.", extra={LoggingExtras.TABLE_NAME: self.table_name})
-            return self.session.query(self.table_class).all()
         else:
             logger.warning(f"No items found in database: {self.table_name}.", extra={LoggingExtras.TABLE_NAME: self.table_name})
-            return None
+        return result
     
 
-    def fetch_item_by_id(self, item_id) -> List[BaseTable] | None:
+    def fetch_item_by_id(self, item_id) -> BaseTable | None:
         """
         Fetches an item from the database based on its ID.
         Requires the table has "id" column with unique values.
@@ -199,33 +195,30 @@ class DatabaseManager():
             return None
     
 
-    def fetch_items_by_attribute(self,**kwargs) -> List[BaseTable] | None:
+    def fetch_items_by_attribute(self,**kwargs) -> List[BaseTable]:
         """
         Fetches items from the database based on specified attributes.
         Only supports equals and logic, no complex queries yet.
-        
+
         Args:
-            **kwargs: Keyword arguments representing the attributes to filter by. 
+            **kwargs: Keyword arguments representing the attributes to filter by.
                       Keys should match column names and values should match the column types.
 
         Returns:
-            list[BaseTable] | None: A list of all BaseTable items in the database table with matching attributes or None if table is empty.
+            list[BaseTable]: A list of all BaseTable items with matching attributes, or an empty list if none found.
         """
 
         # Create a query object to filter items based on the provided attributes
-        query = self.session.query(self.table_class).filter_by(**kwargs)
+        result = self.session.query(self.table_class).filter_by(**kwargs).all()
 
-        if query:
-            # If the query returns results, return them as a list
+        if result:
             logger.debug("Items found in database by using attributes.", extra={LoggingExtras.TABLE_NAME: self.table_name})
-            return query.all()
         else:
-            # If no results are found, return an empty list
             logger.warning("No items found in database by using attributes.", extra={LoggingExtras.TABLE_NAME: self.table_name})
-            return None
+        return result
 
 
-    def filter_items(self, filters: dict, use_or=False) -> List[BaseTable] | None:
+    def filter_items(self, filters: dict, use_or=False) -> List[BaseTable]:
         """
         Apply N filters with operators and return ORM objects.
 
@@ -234,9 +227,9 @@ class DatabaseManager():
                             Supported operators: "==", "!=", ">", ">=", "<", "<=", "in", "like" (See _OPERATOR_MAP).
                             if value is no a tuple, equality is assumed.
             use_or (bool): Whether to combine filters with OR logic instead of AND. Default is False.
-        
+
         Returns:
-            list[BaseTable] | None: A list of all BaseTable items in the database table or None if table is empty.
+            list[BaseTable]: A list of matching BaseTable items, or an empty list if none found.
         """
         logger.debug(f"Applying filters to database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
@@ -282,14 +275,10 @@ class DatabaseManager():
             query = query.filter(sqlalchemy.and_(*clauses))
 
         logger.debug("Filters successfully applied to database with filters", extra={LoggingExtras.TABLE_NAME: self.table_name})
-        result = query.all() 
-        if result != []:
-            return result
-        else:
+        result = query.all()
+        if not result:
             logger.warning("No items found in database after applying filters.", extra={LoggingExtras.TABLE_NAME: self.table_name})
-                                                                                    
-                                                                                
-            return  None
+        return result
 
     
     def to_dataframe(self):
@@ -328,10 +317,10 @@ class DatabaseManager():
             item_id (int): The ID of the item to be updated.
             **kwargs: Keyword arguments representing the attributes to be updated.
         """
-        logger.debug("Updating item in database.", extra={
-                                                    LoggingExtras.TABLE_NAME: self.table_name, 
-                                                    
-                                                })
+        logger.debug(f"Updating item in database {self.table_name} id: {item_id}.", extra={
+                                            LoggingExtras.TABLE_NAME: self.table_name, 
+                                            LoggingExtras.ITEM_ID: item_id,
+                                        })
         ## Check to make sure the dictionary keys match the database table columns
         if self._dict_columns_match(kwargs):
             
@@ -347,16 +336,18 @@ class DatabaseManager():
 
         try:
             self.session.flush() # Detects if the item already exists in the database
+            logger.info(f"Item updated in database with ID {item_id}.", extra={LoggingExtras.TABLE_NAME: self.table_name, LoggingExtras.ITEM_ID: item_id})
 
-        except sqlalchemy.exc.IntegrityError as e:
+        except sqlalchemy.exc.IntegrityError:
             # Handle the IntegrityError if the item already exists in the database
             self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
-            logger.exception("Unable to update item, value already exists in database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
-            raise e
+            basic_attrs = {k: v for k, v in kwargs.items() if isinstance(v, (str, int, float, bool, type(None)))}
+            logger.error("Unable to update item, value already exists in database.", extra={LoggingExtras.TABLE_NAME: self.table_name, LoggingExtras.ATTRIBUTES: basic_attrs})
+            raise DuplicateError(basic_attrs, self.table_class)
         
         finally:
             self.session.commit() # Commit the changes to the database
-            logger.info(f"Item updated in database with ID {item_id}.", extra={LoggingExtras.TABLE_NAME: self.table_name, })
+            
 
 
     def delete_item(self, item_id):
@@ -396,11 +387,11 @@ class DatabaseManager():
         logger.debug("Deleting items from database with given attributes", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
         # Create a query object to filter items based on the provided attributes
-        query = self.session.query(self.table_class).filter_by(**kwargs)
+        items = self.session.query(self.table_class).filter_by(**kwargs).all()
 
         # If the query returns results, delete them from the session and commit the changes to the database
-        if query:
-            for item in query.all():
+        if items:
+            for item in items:
                 self.session.delete(item)
             self.session.commit()
             logger.info("Items deleted from database with given attributes.", extra={LoggingExtras.TABLE_NAME: self.table_name})
@@ -427,7 +418,7 @@ class DatabaseManager():
         # get items to delete using the filter_items method
         items_to_delete = self.filter_items(filters, use_or=use_or)
 
-        if items_to_delete is not None:
+        if items_to_delete:
             for item in items_to_delete:
                 self.session.delete(item)
             self.session.commit()
@@ -616,16 +607,14 @@ class DatabaseManager():
         return self._dict_columns_match(data) and self._dict_types_match(data)
     
 
-    @property
-    def _OPERATOR_MAP(self) -> dict:
-        return {
-            "==": lambda c, v: c == v,
-            "!=": lambda c, v: c != v,
-            ">":  lambda c, v: c > v,
-            ">=": lambda c, v: c >= v,
-            "<":  lambda c, v: c < v,
-            "<=": lambda c, v: c <= v,
-            "in": lambda c, v: c.in_(v),
-            "like": lambda c, v: c.like(v)
-            }
+    _OPERATOR_MAP = {
+        "==": lambda c, v: c == v,
+        "!=": lambda c, v: c != v,
+        ">":  lambda c, v: c > v,
+        ">=": lambda c, v: c >= v,
+        "<":  lambda c, v: c < v,
+        "<=": lambda c, v: c <= v,
+        "in": lambda c, v: c.in_(v),
+        "like": lambda c, v: c.like(v)
+    }
     
