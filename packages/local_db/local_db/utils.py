@@ -13,12 +13,13 @@ Functions:
 """
 
 # Standard library imports
+import datetime as _dt
 from enum import Enum
 import os
 
 # Third-party imports
 import pandas as pd
-from sqlalchemy import Column, Integer, Float, String, Boolean, DateTime, LargeBinary, create_engine
+from sqlalchemy import Column, Integer, Float, String, Boolean, DateTime, Date, LargeBinary, create_engine
 from sqlalchemy.inspection import inspect
 
 # Local imports
@@ -97,13 +98,22 @@ def is_db_file(filename:str) -> bool:
 def map_dtype_to_sql(dtype):
     """
     Maps a given numpy data type to its corresponding SQLAlchemy type.
+    Also accepts Python native types (datetime.datetime, datetime.date) directly,
+    since pandas represents both as ``object`` dtype and cannot distinguish them.
 
     Args:
-        dtype: The numpy data type to be mapped.
-    
+        dtype: A numpy/pandas dtype, or a Python native type (datetime.datetime / datetime.date).
+
     Returns:
         The corresponding SQLAlchemy type as a string.
     """
+    # datetime must be checked before date because datetime is a subclass of date
+    if dtype is _dt.datetime:
+        return DateTime
+    
+    if dtype is _dt.date:
+        return Date
+    
     if pd.api.types.is_integer_dtype(dtype):
         return Integer
     

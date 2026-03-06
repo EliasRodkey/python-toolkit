@@ -25,7 +25,7 @@ Filter API:
         ``{"age": ("between", (18, 65))}``
 """
 # Standard library imports
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Any
 
 # Third-Party library imports
@@ -624,8 +624,13 @@ class DatabaseManager():
         Returns:
             bool: True if the data types match, False otherwise.
         """
-        # Map the data types of the DataFrame to SQLAlchemy types
-        sql_datatypes = map_dtype_list_to_sql([pd.Series([value]).dtype for value in data.values()])
+        # Map the data types of the dict values to SQLAlchemy types.
+        # Pass type(value) for date/datetime so map_dtype_to_sql can distinguish them
+        # from plain strings, which pandas also represents as object dtype.
+        sql_datatypes = map_dtype_list_to_sql([
+            type(v) if isinstance(v, (datetime, date)) else pd.Series([v]).dtype
+            for v in data.values()
+        ])
         sql_datatypes_dict = {}
         for i, column in enumerate(data.keys()):
             sql_datatypes_dict[column] = sql_datatypes[i]

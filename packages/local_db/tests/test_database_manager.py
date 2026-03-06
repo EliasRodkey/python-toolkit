@@ -34,8 +34,9 @@ from local_db import DEFAULT_DB_DIRECTORY
 from local_db.base_table import DuplicateError, ItemNotFoundError
 from local_db.database_file import DatabaseFile
 from local_db.database_manager import DatabaseManager
-from .mock_table_object import MockTableObject
+from .mock_table_object import MockTableObject, DatetimeMockTableObject
 from .mock_table_object import TEST_ENTRY_1, TEST_ENTRY_2, TEST_ENTRY_3, INVALID_ENTRY, INVALID_DF
+from .mock_table_object import DATE_ENTRY_1, DATE_ENTRY_2, DATE_ENTRY_3
 
 
 db_file = DatabaseFile("test.db")
@@ -552,3 +553,80 @@ class TestDatabaseManager:
         names = {r.name for r in results}
         assert "Alpha" in names
         assert "ALPHA_UPPER" in names
+
+
+dt_db_file = DatabaseFile("dt_test.db")
+
+
+@pytest.fixture
+def clean_datetime_database():
+    """Fixture providing a DatetimeMockTableObject manager with a clean in-memory table."""
+    db_manager = DatabaseManager(DatetimeMockTableObject, dt_db_file)
+
+    try:
+        db_manager.session.query(DatetimeMockTableObject).delete()
+        db_manager.session.commit()
+        yield db_manager
+    except Exception:
+        db_manager.session.rollback()
+        raise
+    finally:
+        db_manager.end_session()
+        time.sleep(0.1)
+        dt_db_file.delete()
+
+
+class TestDatetimeFiltering:
+    """Tests filter_items() against a DateTime column, reproducing the budgy date-range bug."""
+
+    def test_filter_datetime_range_list_of_tuples(self, clean_datetime_database):
+        """
+        Reproduces the core budgy bug: filtering a DateTime column with a list of
+        (operator, datetime) tuples should generate a >= / <= range query, not an
+        equality check that passes the list as a raw parameter.
+        """
+        db = clean_datetime_database
+        db.add_item(**DATE_ENTRY_1)  # Jan 5 12:00
+        db.add_item(**DATE_ENTRY_2)  # Feb 10 05:00
+        db.add_item(**DATE_ENTRY_3)  # Mar 21 16:00
+
+        from datetime import datetime
+        start = datetime(2024, 1, 1)
+        end   = datetime(2024, 2, 28, 23, 59, 59)
+
+        results = clean_datetime_database.filter_items({
+            "accessed_timestamp": [(">=", start), ("<=", end)]
+        })
+
+        assert len(results) == 2
+        names = {r.name for r in results}
+        assert "John" in names
+        assert "Mimi" in names
+        assert "Gia" not in names
+
+    def test_filter_datetime_range_combined_with_equality(self, clean_datetime_database):
+        """
+        Reproduces the full budgy query pattern:
+            attributes = {k: ("==", v) for k, v in kwargs.items()}
+            attributes["authorized_date"] = [(">=", start_date), ("<=", end_date)]
+            attributes["exclude"]         = ("==", False)
+
+        Here we use the `name` column as the extra equality constraint (stand-in for exclude).
+        Both the datetime range AND the equality filter must be applied correctly.
+        """
+        db = clean_datetime_database
+        db.add_item(**DATE_ENTRY_1)  # Jan  5, name="John"
+        db.add_item(**DATE_ENTRY_2)  # Feb 10, name="Mimi"
+        db.add_item(**DATE_ENTRY_3)  # Mar 21, name="Gia"
+
+        from datetime import datetime
+        start = datetime(2024, 1, 1)
+        end   = datetime(2024, 3, 31, 23, 59, 59)
+
+        results = clean_datetime_database.filter_items({
+            "accessed_timestamp": [(">=", start), ("<=", end)],
+            "name": ("==", "Mimi"),
+        })
+
+        assert len(results) == 1
+        assert results[0].name == "Mimi"

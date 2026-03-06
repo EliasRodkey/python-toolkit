@@ -11,6 +11,8 @@ for id, name, age, and email.
 import sys
 sys.path.insert(0, ".")
 
+# Standard library imports
+from datetime import datetime, date
 
 # Third-Party library imports
 import pytest
@@ -18,7 +20,6 @@ import pytest
 # local imports
 from local_db.base_table import BaseTable, ESQLDataTypes
 import pandas as pd
-
 
 # Constants
 TEST_ENTRY_1 = {
@@ -55,3 +56,34 @@ class MockTableObject(BaseTable):
     name = ESQLDataTypes.Column(ESQLDataTypes.String(50), nullable=False)
     age = ESQLDataTypes.Column(ESQLDataTypes.Integer)
     email = ESQLDataTypes.Column(ESQLDataTypes.String(100), unique=True)
+
+
+
+DATE_ENTRY_1 = {
+    "created_date": date(2024, 1, 1),
+    "accessed_timestamp": datetime(2024, 1, 5, 12),
+    "name": "John"
+}
+DATE_ENTRY_2 = {
+    "created_date": date(2024, 2, 5),
+    "accessed_timestamp": datetime(2024, 2, 10, 5),
+    "name": "Mimi"
+}
+DATE_ENTRY_3 = {
+    "created_date": date(2024, 3, 14),
+    "accessed_timestamp": datetime(2024, 3, 21, 16),
+    "name": "Gia"
+}
+SWITCHED_DATE_ENTRY = {
+    "created_date": datetime(2024, 11, 13, 1),
+    "accessed_timestamp": date(2024, 12, 25),
+    "name": "Eli"
+}
+
+class DatetimeMockTableObject(BaseTable):
+    """A table object for testing purposes"""
+    __tablename__ = "datetime_test_table"
+    id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
+    created_date = ESQLDataTypes.Column(ESQLDataTypes.Date, nullable=False)
+    accessed_timestamp = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
+    name = ESQLDataTypes.Column(ESQLDataTypes.String(100), unique=True)
