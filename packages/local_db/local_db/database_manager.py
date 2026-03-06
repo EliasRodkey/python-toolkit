@@ -12,8 +12,20 @@ Classes:
         - Editing
         - Updating
         - Deletion
+
+Filter API:
+    filter_items and delete_items_by_filter accept a ``filters`` dict where each value can be:
+        - A bare value (equality assumed): ``{"name": "coffee"}``
+        - A (operator, value) tuple: ``{"age": (">", 5)}``
+        - A list of (operator, value) tuples for multiple constraints on one column:
+          ``{"timestamp": [(">=", start), ("<=", end)]}``
+
+    Supported operators: "==", "!=", ">", ">=", "<", "<=", "in", "like", "ilike", "between"
+    The "between" operator requires a 2-element (lower, upper) sequence as its value:
+        ``{"age": ("between", (18, 65))}``
 """
 # Standard library imports
+from datetime import datetime
 from typing import List, Any
 
 # Third-Party library imports
@@ -57,6 +69,10 @@ class DatabaseManager():
         - clear_table: Deletes all items from the table.
         - start_session: Starts a new database session.
         - end_session: Ends the database session and closes the connection.
+
+    Private helpers:
+        - _build_filter_clauses: Converts a filters dict into a list of SQLAlchemy conditions.
+        - _build_single_clause: Builds one SQLAlchemy condition from a column and a spec.
     """
 
     def __init__(self, table_class: BaseTable, database_file: DatabaseFile):
@@ -231,9 +247,13 @@ class DatabaseManager():
         Apply N filters with operators and return ORM objects.
 
         Args:
-            filters (dict): A dictionary where keys are column names and values are tuples of (operator, value).
-                            Supported operators: "==", "!=", ">", ">=", "<", "<=", "in", "like", "ilike" (See _OPERATOR_MAP).
-                            if value is not a tuple, equality is assumed.
+            filters (dict): A dictionary where keys are column names and values can be:
+                            - A bare value (equality assumed): ``{"name": "coffee"}``
+                            - A (operator, value) tuple: ``{"age": (">", 5)}``
+                            - A list of (operator, value) tuples for multiple constraints on one column:
+                              ``{"timestamp": [(">=", start), ("<=", end)]}``
+                            Supported operators: "==", "!=", ">", ">=", "<", "<=", "in", "like", "ilike", "between"
+                            (See _OPERATOR_MAP). The "between" operator requires a 2-element (lower, upper) sequence.
             use_or (bool): Whether to combine filters with OR logic instead of AND. Default is False.
 
         Returns:
@@ -641,16 +661,50 @@ class DatabaseManager():
     
 
     _OPERATOR_MAP = {
-        "==":    lambda c, v: c == v,
-        "!=":    lambda c, v: c != v,
-        ">":     lambda c, v: c > v,
-        ">=":    lambda c, v: c >= v,
-        "<":     lambda c, v: c < v,
-        "<=":    lambda c, v: c <= v,
-        "in":    lambda c, v: c.in_(v),
-        "like":  lambda c, v: c.like(v),
-        "ilike": lambda c, v: c.ilike(v),
+        "==":      lambda c, v: c == v,
+        "!=":      lambda c, v: c != v,
+        ">":       lambda c, v: c > v,
+        ">=":      lambda c, v: c >= v,
+        "<":       lambda c, v: c < v,
+        "<=":      lambda c, v: c <= v,
+        "in":      lambda c, v: c.in_(v),
+        "like":    lambda c, v: c.like(v),
+        "ilike":   lambda c, v: c.ilike(v),
+        "between": lambda c, v: c.between(v[0], v[1]),
     }
+
+
+    def _build_single_clause(self, column, spec):
+        """
+        Builds a single SQLAlchemy filter condition from a column and spec.
+
+        Args:
+            column: The SQLAlchemy column object.
+            spec: A tuple of (operator, value), or a bare value (equality assumed).
+                  For the "between" operator, value must be a 2-element sequence (lower, upper).
+
+        Returns:
+            A SQLAlchemy filter condition.
+
+        Raises:
+            ValueError: If the operator is not in _OPERATOR_MAP, or if "between" is given
+                        a value that is not a 2-element sequence.
+        """
+        op, value = spec if isinstance(spec, tuple) else ("==", spec)
+        if op == "between":
+            if not hasattr(value, "__len__") or len(value) != 2:
+                logger.error(f"'between' operator requires a 2-element sequence, got: {value!r}.", extra={
+                    LoggingExtras.TABLE_NAME: self.table_name
+                })
+                raise ValueError("'between' operator requires a 2-element (lower, upper) sequence")
+        try:
+            return self._OPERATOR_MAP[op](column, value)
+        except KeyError:
+            logger.exception(f"Unsupported operator in filters: {op}.", extra={
+                LoggingExtras.TABLE_NAME: self.table_name,
+                "operator": op
+            })
+            raise ValueError(f"Unsupported operator: {op}")
 
 
     def _build_filter_clauses(self, filters: dict) -> list:
@@ -658,15 +712,18 @@ class DatabaseManager():
         Builds a list of SQLAlchemy filter conditions from a filters dict.
 
         Args:
-            filters (dict): A dictionary where keys are column names and values are
-                            tuples of (operator, value) or bare values (equality assumed).
+            filters (dict): A dictionary where keys are column names and values are:
+                            - A bare value (equality assumed), e.g. ``"coffee"``
+                            - A tuple of (operator, value), e.g. ``(">", 5)``
+                            - A list of (operator, value) tuples to apply multiple constraints
+                              on the same column, e.g. ``[(">=", start), ("<=", end)]``
 
         Returns:
             list: SQLAlchemy filter conditions.
 
         Raises:
             AttributeError: If a column name does not exist on the table.
-            ValueError: If an operator is not in _OPERATOR_MAP.
+            ValueError: If an operator is not in _OPERATOR_MAP or "between" receives an invalid value.
         """
         clauses = []
         for column_name, spec in filters.items():
@@ -679,17 +736,11 @@ class DatabaseManager():
                 raise AttributeError(f"Invalid column: {column_name}")
 
             column = getattr(self.table_class, column_name)
-            op, value = spec if isinstance(spec, tuple) else ("==", spec)
+            if isinstance(spec, list):
+                for subspec in spec:
+                    clauses.append(self._build_single_clause(column, subspec))
+            else:
+                clauses.append(self._build_single_clause(column, spec))
 
-            try:
-                condition = self._OPERATOR_MAP[op](column, value)
-            except KeyError:
-                logger.exception(f"Unsupported operator in filters: {op}.", extra={
-                                                                    LoggingExtras.TABLE_NAME: self.table_name,
-                                                                    "operator": op
-                                                                })
-                raise ValueError(f"Unsupported operator: {op}")
-
-            clauses.append(condition)
         return clauses
     

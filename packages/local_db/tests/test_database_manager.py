@@ -255,6 +255,67 @@ class TestDatabaseManager:
             clean_database.filter_items({"age": ("~=", 5)})
 
 
+    def test_filter_items_list_of_tuples_range(self, clean_database):
+        """Tests filter_items() with a list of tuples to apply multiple constraints on one column"""
+        # Arrange
+        clean_database.add_item(name="low", age=3, email="a")
+        clean_database.add_item(name="mid", age=10, email="b")
+        clean_database.add_item(name="high", age=20, email="c")
+
+        # Act — age between 6 and 15 inclusive
+        results = clean_database.filter_items({"age": [(">=", 6), ("<=", 15)]})
+
+        # Assert
+        assert len(results) == 1
+        assert results[0].name == "mid"
+
+
+    def test_filter_items_list_of_tuples_mixed_columns(self, clean_database):
+        """Tests filter_items() combining a list-of-tuples column constraint with a single-spec constraint"""
+        # Arrange
+        clean_database.add_item(name="alpha", age=5, email="x")
+        clean_database.add_item(name="alpha", age=15, email="y")
+        clean_database.add_item(name="beta", age=10, email="z")
+
+        # Act — name == "alpha" AND age between 8 and 20
+        results = clean_database.filter_items({"name": "alpha", "age": [(">=", 8), ("<=", 20)]})
+
+        # Assert
+        assert len(results) == 1
+        assert results[0].email == "y"
+
+
+    def test_filter_items_between_operator(self, clean_database):
+        """Tests filter_items() with the 'between' operator shorthand"""
+        # Arrange
+        clean_database.add_item(name="low", age=3, email="a")
+        clean_database.add_item(name="mid", age=10, email="b")
+        clean_database.add_item(name="high", age=20, email="c")
+
+        # Act — age between 6 and 15 inclusive
+        results = clean_database.filter_items({"age": ("between", (6, 15))})
+
+        # Assert
+        assert len(results) == 1
+        assert results[0].name == "mid"
+
+
+    def test_filter_items_between_invalid_value_raises(self, clean_database):
+        """Tests that 'between' raises ValueError when given a non-2-element value"""
+        clean_database.add_item(name="coffee", age=3, email="food")
+
+        with pytest.raises(ValueError):
+            clean_database.filter_items({"age": ("between", 10)})
+
+
+    def test_filter_items_invalid_operator_in_list_raises(self, clean_database):
+        """Tests that an invalid operator inside a list-of-tuples raises ValueError"""
+        clean_database.add_item(name="coffee", age=3, email="food")
+
+        with pytest.raises(ValueError):
+            clean_database.filter_items({"age": [(">=", 1), ("~=", 10)]})
+
+
     def test_to_dataframe(self, clean_database):
         """Tests the to_dataframe() method of the DatabaseManager class"""
 
