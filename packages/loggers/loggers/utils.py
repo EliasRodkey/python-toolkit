@@ -31,6 +31,20 @@ PERFORMANCE_LEVEL_NUM = 15
 
 
 
+class LoggingMode(Enum):
+    """
+    Named logging profiles for configure_logging().
+
+    DEVELOPMENT: folder-per-run, DEBUG to file, INFO to stream (current default behavior)
+    TEST:        daily folder only, DEBUG to file, no stream handler
+    PRODUCTION:  TimedRotatingFileHandler, DEBUG to file, WARNING to stream
+    """
+    DEVELOPMENT = "development"
+    TEST = "test"
+    PRODUCTION = "production"
+
+
+
 class ELoggingFormats(str, Enum):
     """
     Contains different format strings for logging output
