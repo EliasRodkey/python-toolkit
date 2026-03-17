@@ -6,11 +6,12 @@ Unit test for logger_configs.py using pytest
 
 import json
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import pytest
 import os
 
 from loggers.handler_controller import HandlerController
-from loggers.utils import clear_logs, add_performance_level
+from loggers.utils import LoggingMode, clear_logs, add_performance_level
 
 
 @pytest.fixture()
@@ -24,7 +25,8 @@ def test_handler():
         handler_controller = HandlerController()
         logger.addHandler(handler_controller.json_file_handler)
         logger.addHandler(handler_controller.get_handler("main"))
-        logger.addHandler(handler_controller.stream_handler)
+        if handler_controller.stream_handler is not None:
+            logger.addHandler(handler_controller.stream_handler)
 
         logger.debug("Something is happening behind the scenes...")
         logger.info("This message contains some extra information", extra={"var_1" : True, "var_2" : "ERROR"})
@@ -45,8 +47,7 @@ def test_handler():
 
     finally:
         # Teardown: Ensure the session is closed and the files are deleted
-        # pass
-        for name in handler_controller.handler_names:
+        for name in handler_controller.handler_names():
             handler_controller.get_handler(name).flush()
             handler_controller.get_handler(name).close()
             logger.removeHandler(handler_controller.handlers[name])
@@ -152,3 +153,68 @@ class TestHandlerControler:
         assert log_controller._initialized == False
         assert log_controller.handlers == {}
         assert log_controller.json_file_handler == None
+
+
+@pytest.fixture()
+def test_handler_test_mode(tmp_path):
+    """Fixture for TEST mode using an isolated temp directory."""
+    add_performance_level()
+    controller = HandlerController(log_directory=str(tmp_path), mode=LoggingMode.TEST, stream=False)
+    yield controller
+    controller._reset()
+
+
+@pytest.fixture()
+def test_handler_production_mode(tmp_path):
+    """Fixture for PRODUCTION mode using an isolated temp directory."""
+    add_performance_level()
+    controller = HandlerController(
+        log_directory=str(tmp_path),
+        mode=LoggingMode.PRODUCTION,
+        stream_level=logging.WARNING,
+    )
+    yield controller
+    controller._reset()
+
+
+class TestHandlerControllerModes:
+
+    def test_test_mode_daily_folder(self, test_handler_test_mode):
+        """TEST mode should use a daily folder only (no per-run subfolder)."""
+        lc = test_handler_test_mode
+        # run_directory should end with YYYY-MM-DD, not YYYY-MM-DD_HHMMSS
+        folder_name = os.path.basename(lc.run_directory)
+        assert len(folder_name) == 10  # YYYY-MM-DD
+        assert folder_name.count("-") == 2
+
+    def test_test_mode_no_stream_handler(self, test_handler_test_mode):
+        """TEST mode should not create a stream handler."""
+        lc = test_handler_test_mode
+        assert lc.stream_handler is None
+        assert "stream" not in lc.handlers
+
+    def test_test_mode_files_created(self, test_handler_test_mode):
+        """TEST mode should still create readable and JSON log files."""
+        lc = test_handler_test_mode
+        assert os.path.exists(lc.json_file_path)
+        assert os.path.exists(lc.get_handler("main").baseFilename)
+
+    def test_production_mode_uses_timed_rotating_handler(self, test_handler_production_mode):
+        """PRODUCTION mode should use TimedRotatingFileHandler for the JSON log."""
+        lc = test_handler_production_mode
+        assert isinstance(lc.json_file_handler, TimedRotatingFileHandler)
+
+    def test_production_mode_stream_level_is_warning(self, test_handler_production_mode):
+        """PRODUCTION mode stream handler should be at WARNING level."""
+        lc = test_handler_production_mode
+        assert lc.stream_handler is not None
+        assert lc.stream_handler.level == logging.WARNING
+
+    def test_production_mode_flat_directory(self, test_handler_production_mode, tmp_path):
+        """PRODUCTION mode should use the flat log_directory with no date subfolder."""
+        lc = test_handler_production_mode
+        assert os.path.normpath(lc.run_directory) == os.path.normpath(str(tmp_path))
+
+    def test_mode_stored_as_class_variable(self, test_handler_test_mode):
+        """The active mode should be stored on the class."""
+        assert HandlerController.mode == LoggingMode.TEST
