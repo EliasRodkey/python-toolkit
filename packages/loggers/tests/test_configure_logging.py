@@ -6,12 +6,13 @@ Unit test for logger_configs.py using pytest
 
 import json
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import pytest
 import os
 
 from loggers.configure_logging import configure_logging
 from loggers.handler_controller import HandlerController
-from loggers.utils import clear_logs
+from loggers.utils import LoggingMode, clear_logs
 
 
 @pytest.fixture()
@@ -42,12 +43,12 @@ def test_handler():
 
     finally:
         # Teardown: Ensure the session is closed and the files are deleted
-        # pass
         for name in handler_controller.handler_names():
             handler_controller.get_handler(name).flush()
             handler_controller.get_handler(name).close()
-            logger.removeHandler(handler_controller.handlers[name])
-        
+        logging.getLogger().handlers.clear()
+        logger.handlers.clear()
+
         handler_controller._reset()
         clear_logs()
 
@@ -158,3 +159,50 @@ def test_add_new_run_name_logger(test_handler):
                 "SHUTTING DOWN BEEP BOOP",
                 "Failed tricky thingy!"
             ]
+
+
+@pytest.fixture()
+def test_mode_test(tmp_path):
+    """Fixture for TEST mode using an isolated temp directory."""
+    handler_controller = configure_logging(log_directory=str(tmp_path), mode=LoggingMode.TEST)
+    yield handler_controller
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    handler_controller._reset()
+
+
+@pytest.fixture()
+def test_mode_production(tmp_path):
+    """Fixture for PRODUCTION mode using an isolated temp directory."""
+    handler_controller = configure_logging(log_directory=str(tmp_path), mode=LoggingMode.PRODUCTION)
+    yield handler_controller
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    handler_controller._reset()
+
+
+def test_test_mode_no_stream_handler(test_mode_test):
+    """TEST mode should not create a stream handler on the controller."""
+    assert test_mode_test.stream_handler is None
+    assert "stream" not in test_mode_test.handlers
+
+
+def test_test_mode_daily_folder(test_mode_test):
+    """TEST mode run_directory should be a daily folder (no per-run subfolder)."""
+    lc = test_mode_test
+    folder_name = os.path.basename(lc.run_directory)
+    assert len(folder_name) == 10  # YYYY-MM-DD
+    assert folder_name.count("-") == 2
+
+
+def test_production_mode_stream_handler_at_warning(test_mode_production):
+    """PRODUCTION mode stream handler should be at WARNING level."""
+    lc = test_mode_production
+    assert lc.stream_handler is not None
+    assert lc.stream_handler.level == logging.WARNING
+
+
+def test_production_mode_timed_rotating_json_handler(test_mode_production):
+    """PRODUCTION mode should use TimedRotatingFileHandler for the JSON log."""
+    lc = test_mode_production
+    assert isinstance(lc.json_file_handler, TimedRotatingFileHandler)
