@@ -35,13 +35,13 @@ class LoggingMode(Enum):
     """
     Named logging profiles for configure_logging().
 
-    DEVELOPMENT: folder-per-run, DEBUG to file, INFO to stream (current default behavior)
-    TEST:        daily folder only, DEBUG to file, no stream handler
-    PRODUCTION:  TimedRotatingFileHandler, DEBUG to file, WARNING to stream
+    DIRECTORY_PER_RUN:      folder-per-run, DEBUG to file, INFO to stream
+    DAILY_DIRECTORY:        daily folder only, DEBUG to file, no stream handler
+    BASIC_ROTATING_HANDLER: flat directory, TimedRotatingFileHandler, DEBUG to file, WARNING to stream
     """
-    DEVELOPMENT = "development"
-    TEST = "test"
-    PRODUCTION = "production"
+    DIRECTORY_PER_RUN = "directory_per_run"
+    DAILY_DIRECTORY = "daily_directory"
+    BASIC_ROTATING_HANDLER = "basic_rotating_handler"
 
 
 

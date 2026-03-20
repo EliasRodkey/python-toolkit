@@ -14,32 +14,60 @@ import logging
 from loggers.handler_controller import HandlerController
 from loggers.utils import LOG_FILE_DEFAULT_DIRECTORY, LoggingMode, add_performance_level
 
-# Mode defaults: (stream_enabled, stream_level, file_level)
+# Mode defaults: all handler options keyed by name
 _MODE_DEFAULTS = {
-    LoggingMode.DEVELOPMENT: (True,  logging.INFO,    logging.DEBUG),
-    LoggingMode.TEST:        (False, logging.INFO,    logging.DEBUG),
-    LoggingMode.PRODUCTION:  (True,  logging.WARNING, logging.DEBUG),
+    LoggingMode.DIRECTORY_PER_RUN: {
+        "stream":       True,
+        "stream_level": logging.INFO,
+        "file_level":   logging.DEBUG,
+        "json_level":   logging.DEBUG,
+        "rotating":     False,
+        "json":         True,
+    },
+    LoggingMode.DAILY_DIRECTORY: {
+        "stream":       False,
+        "stream_level": logging.INFO,
+        "file_level":   logging.DEBUG,
+        "json_level":   logging.DEBUG,
+        "rotating":     False,
+        "json":         True,
+    },
+    LoggingMode.BASIC_ROTATING_HANDLER: {
+        "stream":       True,
+        "stream_level": logging.WARNING,
+        "file_level":   logging.DEBUG,
+        "json_level":   logging.DEBUG,
+        "rotating":     True,
+        "json":         True,
+    },
 }
 
 
 def configure_logging(
         log_directory: str = LOG_FILE_DEFAULT_DIRECTORY,
-        mode: LoggingMode = LoggingMode.DEVELOPMENT,
+        mode: LoggingMode = LoggingMode.DIRECTORY_PER_RUN,
         stream: bool | None = None,
         stream_level: int | None = None,
         file_level: int | None = None,
+        json_level: int | None = None,
+        rotating: bool | None = None,
+        json: bool | None = None,
         ) -> HandlerController:
     """
     Configures the root logger with standardized handlers and formatting.
 
     Args:
         log_directory (str): Parent folder for all logs. Defaults to cwd/data/logs/.
-        mode (LoggingMode): Logging profile. DEVELOPMENT (default) creates a per-run folder.
-            TEST uses a daily folder with no stream handler.
-            PRODUCTION uses TimedRotatingFileHandler with WARNING-level stream output.
+        mode (LoggingMode): Logging profile that sets defaults for all other options.
+            DIRECTORY_PER_RUN (default): per-run timestamped folder, INFO stream.
+            DAILY_DIRECTORY: single daily folder, no stream handler.
+            BASIC_ROTATING_HANDLER: flat directory with TimedRotatingFileHandler, WARNING stream.
         stream (bool | None): Override whether a stream handler is added. Defaults to mode setting.
         stream_level (int | None): Override stream handler log level. Defaults to mode setting.
-        file_level (int | None): Override file handler log level. Defaults to mode setting.
+        file_level (int | None): Override text file handler log level. Defaults to mode setting.
+        json_level (int | None): Override JSON file handler log level. Defaults to mode setting.
+        rotating (bool | None): Override whether to use TimedRotatingFileHandler. Defaults to mode setting.
+        json (bool | None): Override whether to include a JSON file handler. Defaults to mode setting.
 
     Returns:
         HandlerController: Manages handlers and file paths for the current run.
@@ -47,10 +75,13 @@ def configure_logging(
     add_performance_level()
 
     # Resolve final settings: explicit kwargs override mode defaults
-    default_stream, default_stream_level, default_file_level = _MODE_DEFAULTS[mode]
-    resolved_stream = stream if stream is not None else default_stream
-    resolved_stream_level = stream_level if stream_level is not None else default_stream_level
-    resolved_file_level = file_level if file_level is not None else default_file_level
+    defaults = _MODE_DEFAULTS[mode]
+    resolved_stream = stream if stream is not None else defaults["stream"]
+    resolved_stream_level = stream_level if stream_level is not None else defaults["stream_level"]
+    resolved_file_level = file_level if file_level is not None else defaults["file_level"]
+    resolved_json_level = json_level if json_level is not None else defaults["json_level"]
+    resolved_rotating = rotating if rotating is not None else defaults["rotating"]
+    resolved_json = json if json is not None else defaults["json"]
 
     log_controller = HandlerController(
         log_directory=log_directory,
@@ -58,6 +89,9 @@ def configure_logging(
         stream=resolved_stream,
         stream_level=resolved_stream_level,
         file_level=resolved_file_level,
+        json_level=resolved_json_level,
+        rotating=resolved_rotating,
+        json=resolved_json,
     )
 
     # Configure root logger
@@ -65,7 +99,8 @@ def configure_logging(
     root_logger.setLevel(logging.DEBUG)
 
     root_logger.addHandler(log_controller.get_handler("main"))
-    root_logger.addHandler(log_controller.json_file_handler)
+    if log_controller.json_file_handler is not None:
+        root_logger.addHandler(log_controller.json_file_handler)
     if log_controller.stream_handler is not None:
         root_logger.addHandler(log_controller.stream_handler)
 

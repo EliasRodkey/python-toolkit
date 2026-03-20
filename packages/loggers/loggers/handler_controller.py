@@ -66,14 +66,14 @@ class HandlerController():
     This class is used to ensure that all loggers send their logs to the same files.
     This ensures that all loggers share the same run name and log file paths.
 
-    In DEVELOPMENT mode (default): creates a timestamped run folder per process.
-    In TEST mode: uses a single daily folder (no per-run subfolder).
-    In PRODUCTION mode: uses TimedRotatingFileHandler with daily rotation.
+    In DIRECTORY_PER_RUN mode (default): creates a timestamped run folder per process.
+    In DAILY_DIRECTORY mode: uses a single daily folder (no per-run subfolder).
+    In BASIC_ROTATING_HANDLER mode: uses TimedRotatingFileHandler with daily rotation.
 
     Attributes:
         run_directory (str): The path to the directory that contains all of the log files for the current run.
         json_file_path (str): The path to the json log file (same for all instances).
-        json_file_handler (logging.FileHandler): FileHandler for json log file (same for all instances).
+        json_file_handler (logging.FileHandler): FileHandler for json log file (None if json=False).
         stream_handler (logging.StreamHandler): StreamHandler for all instances (None if stream=False).
         mode (LoggingMode): The active logging mode.
 
@@ -86,16 +86,19 @@ class HandlerController():
     json_file_path: str = ""
     json_file_handler: logging.FileHandler
     stream_handler: logging.StreamHandler
-    mode: LoggingMode = LoggingMode.DEVELOPMENT
+    mode: LoggingMode = LoggingMode.DIRECTORY_PER_RUN
     _initialized: bool = False
 
     def __new__(
         cls,
         log_directory: str = LOG_FILE_DEFAULT_DIRECTORY,
-        mode: LoggingMode = LoggingMode.DEVELOPMENT,
+        mode: LoggingMode = LoggingMode.DIRECTORY_PER_RUN,
         stream: bool = True,
         stream_level: int = logging.INFO,
         file_level: int = logging.DEBUG,
+        json_level: int = logging.DEBUG,
+        rotating: bool = False,
+        json: bool = True,
     ):
         """If this is the first time the class is being instantiated, set up the log folder and handlers."""
         if cls._initialized == False:
@@ -104,14 +107,19 @@ class HandlerController():
             # Generate log folder and return datetime stamp + directory
             cls.log_datetime_stamp, cls.run_directory = cls._generate_program_run_folder(log_directory, mode)
 
-            # Create the json file handler (used by all loggers in the run)
-            cls.json_file_path, cls.json_file_handler = cls._create_json_log_handler(mode, file_level)
+            # Create the json file handler (used by all loggers in the run), or None if json=False
+            if json:
+                cls.json_file_path, cls.json_file_handler = cls._create_json_log_handler(rotating, json_level)
+            else:
+                cls.json_file_path = ""
+                cls.json_file_handler = None
 
             # Create the stream handler (or None if suppressed)
             cls.stream_handler = cls._create_stream_log_handler(stream_level) if stream else None
 
             # Register handlers
-            cls._add_handler("json", cls.json_file_handler)
+            if cls.json_file_handler is not None:
+                cls._add_handler("json", cls.json_file_handler)
             if cls.stream_handler is not None:
                 cls._add_handler("stream", cls.stream_handler)
             cls.add_file_handler("main", file_level=file_level)
@@ -126,15 +134,15 @@ class HandlerController():
         """Generates the log directory and datetime stamp based on the active mode."""
         log_datetime_stamp = create_log_datetime_stamp()
 
-        if mode == LoggingMode.DEVELOPMENT:
+        if mode == LoggingMode.DIRECTORY_PER_RUN:
             # Folder-per-run: data/logs/YYYY-MM-DD/YYYY-MM-DD_HHMMSS/
             daily_log_stamp = create_datestamp()
             run_directory = os.path.join(log_directory, daily_log_stamp, log_datetime_stamp)
-        elif mode == LoggingMode.TEST:
+        elif mode == LoggingMode.DAILY_DIRECTORY:
             # Daily folder only: data/logs/YYYY-MM-DD/
             daily_log_stamp = create_datestamp()
             run_directory = os.path.join(log_directory, daily_log_stamp)
-        else:  # PRODUCTION
+        else:  # BASIC_ROTATING_HANDLER
             # Flat directory: data/logs/
             run_directory = log_directory
 
@@ -142,9 +150,9 @@ class HandlerController():
         return (log_datetime_stamp, run_directory)
 
     @classmethod
-    def _create_json_log_handler(cls, mode: LoggingMode, file_level: int) -> Tuple[str, logging.Handler]:
-        """Creates the json file handler. Uses TimedRotatingFileHandler for PRODUCTION mode."""
-        if mode == LoggingMode.PRODUCTION:
+    def _create_json_log_handler(cls, rotating: bool, json_level: int) -> Tuple[str, logging.Handler]:
+        """Creates the json file handler. Uses TimedRotatingFileHandler when rotating=True."""
+        if rotating:
             json_file_path = os.path.join(cls.run_directory, "loggers.json.log")
             json_file_handler = TimedRotatingFileHandler(
                 filename=json_file_path,
@@ -157,7 +165,7 @@ class HandlerController():
             json_file_handler = logging.FileHandler(json_file_path)
 
         json_file_handler.setFormatter(JSONFormatter())
-        json_file_handler.setLevel(file_level)
+        json_file_handler.setLevel(json_level)
         return (json_file_path, json_file_handler)
 
     @classmethod
@@ -221,7 +229,7 @@ class HandlerController():
             cls.json_file_path = ""
             cls.stream_handler = None
             cls.json_file_handler = None
-            cls.mode = LoggingMode.DEVELOPMENT
+            cls.mode = LoggingMode.DIRECTORY_PER_RUN
 
         cls._initialized = False
 
@@ -229,10 +237,13 @@ class HandlerController():
     def __init__(
         self,
         log_directory: str = LOG_FILE_DEFAULT_DIRECTORY,
-        mode: LoggingMode = LoggingMode.DEVELOPMENT,
+        mode: LoggingMode = LoggingMode.DIRECTORY_PER_RUN,
         stream: bool = True,
         stream_level: int = logging.INFO,
         file_level: int = logging.DEBUG,
+        json_level: int = logging.DEBUG,
+        rotating: bool = False,
+        json: bool = True,
     ):
         self.log_directory = log_directory
 
