@@ -34,7 +34,7 @@ import sqlalchemy
 
 # local imports
 from local_db.database_connections import create_engine_conn, create_session
-from local_db.base_table import BaseTable, DuplicateError, ItemNotFoundError
+from local_db.base_table import BaseTable, DatabaseIntegrityError, ItemNotFoundError
 from local_db.database_file import DatabaseFile
 from local_db.utils import LoggingExtras, map_dtype_list_to_sql, orm_list_to_dataframe
 
@@ -114,12 +114,11 @@ class DatabaseManager():
                 self.session.flush() # Detects if the item already exists in the database
                 logger.info(f"Item added to database.", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
-            except sqlalchemy.exc.IntegrityError:
+            except sqlalchemy.exc.IntegrityError as e:
                 # Handle the IntegrityError if the item already exists in the database
                 self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
-                basic_attrs = {k: v for k, v in kwargs.items() if isinstance(v, (str, int, float, bool, type(None)))}
-                logger.error(f"Item already exists in database.", extra={LoggingExtras.TABLE_NAME: self.table_name, LoggingExtras.ATTRIBUTES: basic_attrs})
-                raise DuplicateError(basic_attrs, self.table_class)
+                logger.error(f"Database integrity error on add.", extra={LoggingExtras.TABLE_NAME: self.table_name})
+                raise DatabaseIntegrityError(e, self.table_class)
             
             finally:
                 self.session.commit() # Commit the changes to the database
@@ -158,14 +157,14 @@ class DatabaseManager():
                                                                                     LoggingExtras.COLUMNS: df.columns.tolist()
                                                                                 })  
 
-            except sqlalchemy.exc.IntegrityError:
+            except sqlalchemy.exc.IntegrityError as e:
                 # Handle the IntegrityError if the item already exists in the database
                 self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
-                logger.error(f"Dubplicates detected in : {self.table_name}.", extra={
-                                                                                    LoggingExtras.TABLE_NAME: self.table_name, 
+                logger.error(f"Database integrity error on DataFrame append.", extra={
+                                                                                    LoggingExtras.TABLE_NAME: self.table_name,
                                                                                     LoggingExtras.COLUMNS: df.columns.tolist()
                                                                                 })
-                raise DuplicateError(df.columns.tolist(), self.table_class)
+                raise DatabaseIntegrityError(e, self.table_class)
             
             finally:
                 self.session.commit() # Commit the changes to the database      
@@ -333,12 +332,11 @@ class DatabaseManager():
             self.session.flush() # Detects if the item already exists in the database
             logger.info(f"Item updated in database with ID {item_id}.", extra={LoggingExtras.TABLE_NAME: self.table_name, LoggingExtras.ITEM_ID: item_id})
 
-        except sqlalchemy.exc.IntegrityError:
+        except sqlalchemy.exc.IntegrityError as e:
             # Handle the IntegrityError if the item already exists in the database
             self.session.rollback() # Rollback the session to avoid leaving it in an inconsistent state
-            basic_attrs = {k: v for k, v in kwargs.items() if isinstance(v, (str, int, float, bool, type(None)))}
-            logger.error("Unable to update item, value already exists in database.", extra={LoggingExtras.TABLE_NAME: self.table_name, LoggingExtras.ATTRIBUTES: basic_attrs})
-            raise DuplicateError(basic_attrs, self.table_class)
+            logger.error("Database integrity error on update.", extra={LoggingExtras.TABLE_NAME: self.table_name, LoggingExtras.ITEM_ID: item_id})
+            raise DatabaseIntegrityError(e, self.table_class)
         
         finally:
             self.session.commit() # Commit the changes to the database
@@ -562,7 +560,7 @@ class DatabaseManager():
             sql_datatypes_dict[column] = sql_datatypes[i]
 
         # Get the data types of the database table columns
-        table_datatypes_set = set(self.table_class.get_column_types().items())
+        table_datatypes_set = set(self.table_class.get_column_sqla_types().items())
 
         # Check if the data types of the input DataFrame match the data types of the database table
         types_match = set(sql_datatypes_dict.items()).issubset(set(table_datatypes_set))
@@ -636,7 +634,7 @@ class DatabaseManager():
             sql_datatypes_dict[column] = sql_datatypes[i]
 
         # Get the data types of the database table columns
-        table_datatypes_set = set(self.table_class.get_column_types().items())
+        table_datatypes_set = set(self.table_class.get_column_sqla_types().items())
 
         # Check if the data types of the input DataFrame match the data types of the database table
         types_match = set(sql_datatypes_dict.items()).issubset(set(table_datatypes_set))

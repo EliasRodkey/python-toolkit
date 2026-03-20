@@ -8,7 +8,15 @@ Classes:
     Base: The declarative base class for all database models.
     BaseTable: An abstract base class for database tables with utility methods.
 """
+
+# Standard library imports
+from datetime import datetime, date, time, timedelta
+from decimal import Decimal
 from enum import Enum
+import re
+from typing import Any
+import uuid
+
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import (
     Column,  # Defines a column in a table
@@ -35,33 +43,32 @@ from sqlalchemy import (
     ARRAY,  # Array type (PostgreSQL-specific)
 )
 
-
-class ESQLDataTypes(Enum):
-    """An Enum class containing all of the SQL datatypes available through sqlalchemy"""
-    Column = Column # SQLalchemy column class
-    Integer = Integer  # Integer type
-    String = String  # String type with optional length
-    Float = Float # Floating-point number
-    Boolean = Boolean  # Boolean type (True/False)
-    Date = Date  # Date type (year, month, day)
-    DateTime = DateTime  # Date and time type
-    Time = Time  # Time type (hour, minute, second)
-    Text = Text  # Large text field
-    LargeBinary = LargeBinary  # Binary data (e.g., files, images)
-    JSON = JSON  # JSON-encoded data
-    Enum = Enum  # Enumerated type with fixed values
-    Numeric = Numeric  # Fixed-precision number
-    SmallInteger = SmallInteger  # Smaller integer type
-    BigInteger = BigInteger  # Larger integer type
-    Interval = Interval  # Time interval
-    Unicode = Unicode  # Unicode string
-    UnicodeText = UnicodeText  # Large Unicode text field
-    PickleType = PickleType  # Stores Python objects serialized via pickle
-    UUID = UUID  # Universally unique identifier
-    ARRAY = ARRAY  # Array type (PostgreSQL-specific)
-
+SQLA_TYPE_MAP = {
+    Integer: int,
+    String: str,
+    Float: float,
+    Boolean: bool,
+    Date: date,
+    DateTime: datetime,
+    Time: time,
+    Text: str,
+    LargeBinary: bytes,
+    JSON: dict,
+    Enum: Enum,
+    Numeric: Decimal,
+    SmallInteger: int,
+    BigInteger: int,
+    Interval: timedelta,
+    Unicode: str,
+    UnicodeText: str,
+    PickleType: Any,
+    UUID: uuid.UUID,
+    ARRAY: list,
+}
 
 Base = declarative_base()
+
+
 
 class BaseTable(Base):
     """
@@ -80,11 +87,15 @@ class BaseTable(Base):
 
 
     @classmethod
-    def get_column_types(cls):
+    def get_column_sqla_types(cls):
         """Returns a dictionary mapping column names to their types."""
         return {column.name: type(column.type) for column in cls.__table__.columns}
     
-
+    @classmethod
+    def get_column_python_types(cls):
+        """Returns a dictionary mapping column names to their types."""
+        return {column.name: type(SQLA_TYPE_MAP[column.type]) for column in cls.__table__.columns}
+    
     @property
     def column_names(self):
         """Returns a list of column names for the instance."""
@@ -94,16 +105,19 @@ class BaseTable(Base):
     @property
     def column_types(self):
         """Returns a dictionary mapping column names to their types for the instance."""
-        return self.get_column_types()
+        return self.get_column_sqla_types()
 
 
 
-class DuplicateError(Exception):
-    def __init__(self, value, table: BaseTable, message: str="Duplicate value detected in database:"):
-        self.value = value
+class DatabaseIntegrityError(Exception):
+    def __init__(self, orig: Exception, table: "BaseTable"):
         self.table_name = table.__tablename__
-        self.message = f"{message} {self.table_name}, value: {value}"
-        super().__init__(self.message)
+        self.message = str(orig.orig)
+        match = re.search(r"UNIQUE constraint failed: \w+\.(\w+)", self.message)
+        self.column = match.group(1) if match else None
+        detail = f", column: {self.column}" if self.column else ""
+        super().__init__(f"Database integrity error in {self.table_name}{detail}. {self.message}")
+
 
 
 class ItemNotFoundError(Exception):
