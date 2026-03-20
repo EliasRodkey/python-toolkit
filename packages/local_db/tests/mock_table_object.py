@@ -18,7 +18,8 @@ from datetime import datetime, date
 import pytest
 
 # local imports
-from local_db.base_table import BaseTable, ESQLDataTypes
+from local_db.base_table import BaseTable
+from sqlalchemy import Column, Integer, String, Date, DateTime
 import pandas as pd
 
 # Constants
@@ -52,10 +53,10 @@ INVALID_DF = pd.DataFrame({
 class MockTableObject(BaseTable):
     """A table object for testing purposes"""
     __tablename__ = "test_table"
-    id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
-    name = ESQLDataTypes.Column(ESQLDataTypes.String(50), nullable=False)
-    age = ESQLDataTypes.Column(ESQLDataTypes.Integer)
-    email = ESQLDataTypes.Column(ESQLDataTypes.String(100), unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(50), nullable=False)
+    age = Column(Integer)
+    email = Column(String(100), unique=True)
 
 
 
@@ -83,7 +84,7 @@ SWITCHED_DATE_ENTRY = {
 class DatetimeMockTableObject(BaseTable):
     """A table object for testing purposes"""
     __tablename__ = "datetime_test_table"
-    id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
-    created_date = ESQLDataTypes.Column(ESQLDataTypes.Date, nullable=False)
-    accessed_timestamp = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
-    name = ESQLDataTypes.Column(ESQLDataTypes.String(100), unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    created_date = Column(Date, nullable=False)
+    accessed_timestamp = Column(DateTime)
+    name = Column(String(100), unique=True)
