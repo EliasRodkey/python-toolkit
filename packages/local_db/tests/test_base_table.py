@@ -42,7 +42,7 @@ class TestBaseTable:
 
     def test_class_column_types(self):
         """Tests the get_column_types() method of the BaseTable class"""
-        column_types = MockTableObject.get_column_types()
+        column_types = MockTableObject.get_column_sqla_types()
         assert column_types == {"id": Integer, "name": String, "age": Integer, "email": String}, f"Expected {{\"id\": Integer, \"name\": String, \"age\": Integer, \"email\": String}}, but got {column_types}"
     
 

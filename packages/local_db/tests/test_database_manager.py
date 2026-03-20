@@ -31,7 +31,7 @@ import time
 
 # local imports
 from local_db import DEFAULT_DB_DIRECTORY
-from local_db.base_table import DuplicateError, ItemNotFoundError
+from local_db.base_table import DatabaseIntegrityError, ItemNotFoundError
 from local_db.database_file import DatabaseFile
 from local_db.database_manager import DatabaseManager
 from .mock_table_object import MockTableObject, DatetimeMockTableObject
@@ -127,9 +127,10 @@ class TestDatabaseManager:
         # Add an item to the database
         clean_database.add_item(**TEST_ENTRY_1)
 
-        with pytest.raises(DuplicateError):
+        with pytest.raises(DatabaseIntegrityError) as exc_info:
             clean_database.add_item(**TEST_ENTRY_1)
 
+        assert exc_info.value.column == "email"
         assert clean_database.session.query(MockTableObject).count() == 1, "Duplicate item added to the database."
 
 

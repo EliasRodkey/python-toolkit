@@ -13,13 +13,13 @@ Functions:
 """
 
 # Standard library imports
-import datetime as _dt
+from datetime import datetime, date
 from enum import Enum
 import os
 
 # Third-party imports
 import pandas as pd
-from sqlalchemy import Column, Integer, Float, String, Boolean, DateTime, Date, LargeBinary, create_engine
+from sqlalchemy import Column, Integer, Float, String, Boolean, DateTime, Date, LargeBinary, Text, JSON, create_engine
 from sqlalchemy.inspection import inspect
 
 # Local imports
@@ -35,7 +35,6 @@ class LoggingExtras(str, Enum):
     """An enum class which holds the different logging 'extra' field identifiers"""
     TABLE_NAME = "table_name"
     FILTERS = "filters"
-    ATTRIBUTES = "attributes"
     ITEM_ID = "item_id"
     USE_OR = "use_or"
     FILE = "file"
@@ -108,10 +107,10 @@ def map_dtype_to_sql(dtype):
         The corresponding SQLAlchemy type as a string.
     """
     # datetime must be checked before date because datetime is a subclass of date
-    if dtype is _dt.datetime:
+    if dtype is datetime:
         return DateTime
     
-    if dtype is _dt.date:
+    if dtype is date:
         return Date
     
     if pd.api.types.is_integer_dtype(dtype):
@@ -143,7 +142,7 @@ def map_dtype_to_sql(dtype):
     
     else:
         raise ValueError(f"Unsupported pandas dtype: {dtype}")
-    
+
 
 def map_dtype_list_to_sql(dtype_list):
     """
