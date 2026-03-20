@@ -154,6 +154,20 @@ class TestHandlerControler:
         assert log_controller.handlers == {}
         assert log_controller.json_file_handler == None
 
+    def test_reset_completeness(self, test_handler):
+        """_reset() should clear all class-level state, not just _initialized/handlers/json_file_handler."""
+        log_controller = test_handler
+
+        log_controller._reset()
+
+        assert log_controller._initialized == False
+        assert log_controller.handlers == {}
+        assert log_controller.stream_handler is None
+        assert log_controller.json_file_handler is None
+        assert log_controller.run_directory == ""
+        assert log_controller.log_datetime_stamp == ""
+        assert log_controller.json_file_path == ""
+
 
 @pytest.fixture()
 def test_handler_test_mode(tmp_path):
@@ -238,3 +252,110 @@ class TestHandlerControllerModes:
         """rotating=True should use TimedRotatingFileHandler regardless of mode."""
         lc = test_handler_rotating_override
         assert isinstance(lc.json_file_handler, TimedRotatingFileHandler)
+
+    def test_json_false_override(self, tmp_path):
+        """json=False on DIRECTORY_PER_RUN should suppress JSON handler."""
+        add_performance_level()
+        lc = HandlerController(
+            log_directory=str(tmp_path),
+            mode=LoggingMode.DIRECTORY_PER_RUN,
+            json=False,
+        )
+        try:
+            assert lc.json_file_handler is None
+            assert "json" not in lc.handler_names()
+        finally:
+            lc._reset()
+
+    def test_stream_false_override(self, tmp_path):
+        """stream=False on DIRECTORY_PER_RUN should suppress the stream handler."""
+        add_performance_level()
+        lc = HandlerController(
+            log_directory=str(tmp_path),
+            mode=LoggingMode.DIRECTORY_PER_RUN,
+            stream=False,
+        )
+        try:
+            assert lc.stream_handler is None
+            assert "stream" not in lc.handler_names()
+        finally:
+            lc._reset()
+
+
+@pytest.fixture()
+def test_handler_basic_single_file(tmp_path):
+    """Fixture for BASIC_SINGLE_FILE mode using an isolated temp directory."""
+    add_performance_level()
+    controller = HandlerController(
+        log_directory=str(tmp_path),
+        mode=LoggingMode.BASIC_SINGLE_FILE,
+        stream=True,
+        stream_level=logging.INFO,
+        file=True,
+        json=False,
+    )
+    yield controller
+    controller._reset()
+
+
+@pytest.fixture()
+def test_handler_basic_json_file(tmp_path):
+    """Fixture for BASIC_JSON_FILE mode using an isolated temp directory."""
+    add_performance_level()
+    controller = HandlerController(
+        log_directory=str(tmp_path),
+        mode=LoggingMode.BASIC_JSON_FILE,
+        stream=True,
+        stream_level=logging.INFO,
+        file=False,
+        json=True,
+    )
+    yield controller
+    controller._reset()
+
+
+class TestHandlerControllerBasicModes:
+
+    def test_basic_single_file_flat_directory(self, test_handler_basic_single_file, tmp_path):
+        """BASIC_SINGLE_FILE run_directory should be the flat log_directory."""
+        lc = test_handler_basic_single_file
+        assert os.path.normpath(lc.run_directory) == os.path.normpath(str(tmp_path))
+
+    def test_basic_single_file_no_json_handler(self, test_handler_basic_single_file):
+        """BASIC_SINGLE_FILE should not create a JSON handler."""
+        lc = test_handler_basic_single_file
+        assert lc.json_file_handler is None
+        assert "json" not in lc.handler_names()
+
+    def test_basic_single_file_has_main_and_stream(self, test_handler_basic_single_file):
+        """BASIC_SINGLE_FILE should have 'main' and 'stream' handlers."""
+        lc = test_handler_basic_single_file
+        assert "main" in lc.handler_names()
+        assert "stream" in lc.handler_names()
+
+    def test_basic_single_file_stream_at_info(self, test_handler_basic_single_file):
+        """BASIC_SINGLE_FILE stream handler should be at INFO level."""
+        lc = test_handler_basic_single_file
+        assert lc.stream_handler is not None
+        assert lc.stream_handler.level == logging.INFO
+
+    def test_basic_json_file_flat_directory(self, test_handler_basic_json_file, tmp_path):
+        """BASIC_JSON_FILE run_directory should be the flat log_directory."""
+        lc = test_handler_basic_json_file
+        assert os.path.normpath(lc.run_directory) == os.path.normpath(str(tmp_path))
+
+    def test_basic_json_file_no_main_handler(self, test_handler_basic_json_file):
+        """BASIC_JSON_FILE should not create a 'main' text file handler (file=False)."""
+        lc = test_handler_basic_json_file
+        assert "main" not in lc.handler_names()
+
+    def test_basic_json_file_has_json_and_stream(self, test_handler_basic_json_file):
+        """BASIC_JSON_FILE should have 'json' and 'stream' handlers."""
+        lc = test_handler_basic_json_file
+        assert "json" in lc.handler_names()
+        assert "stream" in lc.handler_names()
+
+    def test_basic_json_file_json_file_exists(self, test_handler_basic_json_file):
+        """BASIC_JSON_FILE should create the JSON log file on disk."""
+        lc = test_handler_basic_json_file
+        assert os.path.exists(lc.json_file_path)

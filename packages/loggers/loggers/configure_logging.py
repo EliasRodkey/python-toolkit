@@ -132,7 +132,8 @@ def configure_logging(
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
 
-    root_logger.addHandler(log_controller.get_handler("main"))
+    if "main" in log_controller.handler_names():
+        root_logger.addHandler(log_controller.get_handler("main"))
     if log_controller.json_file_handler is not None:
         root_logger.addHandler(log_controller.json_file_handler)
     if log_controller.stream_handler is not None:

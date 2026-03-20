@@ -142,7 +142,10 @@ class HandlerController():
         match mode:
             case LoggingMode.BASIC_SINGLE_FILE:
                 # Single log file created in central directory per run
-                daily_log_stamp = create_datestamp()
+                run_directory = log_directory
+            
+            case LoggingMode.BASIC_JSON_FILE:
+                # Single json log file created in central directory per run
                 run_directory = log_directory
 
             case LoggingMode.DIRECTORY_PER_RUN:
@@ -158,6 +161,9 @@ class HandlerController():
             case LoggingMode.BASIC_ROTATING_HANDLER:
                 # Flat directory: data/logs/
                 run_directory = log_directory
+            
+            case _:
+                raise ValueError(f"Unknown LoggingMode provided to HandlerController: {mode}")
 
         os.makedirs(run_directory, exist_ok=True)
         return (log_datetime_stamp, run_directory)
@@ -255,7 +261,9 @@ class HandlerController():
         stream_level: int = logging.INFO,
         file_level: int = logging.DEBUG,
         json_level: int = logging.DEBUG,
+        file_format: LoggingFormats = LoggingFormats.FORMAT_BASIC,
         rotating: bool = False,
+        file: bool = True,
         json: bool = True,
     ):
         self.log_directory = log_directory
