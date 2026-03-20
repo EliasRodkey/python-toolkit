@@ -10,7 +10,7 @@ Loggers provides a standardized way to configure and manage log output across a 
 
 - **`configure_logging()`** — Configures the root logger with file, JSON, and optional stream handlers. Returns a `HandlerController`.
 - **`HandlerController`** — Singleton-like class that manages all handlers for a run. Ensures all loggers write to the same files.
-- **`LoggingMode`** — Enum that selects a logging profile (DEVELOPMENT, TEST, PRODUCTION).
+- **`LoggingMode`** — Enum that selects a logging profile. Five built-in modes; see below.
 - **`JSONLogParser`** — Reads, filters, and interprets a JSON log file produced by the package.
 - **`Logger`** — **Deprecated.** Do not use.
 
@@ -33,7 +33,7 @@ logger.warning("Warning!")
 logger.performance("Timing measurement", process_id="step_1")
 ```
 
-By default this creates `data/logs/YYYY-MM-DD/YYYY-MM-DD_HHMMSS/` with a readable `.log` file, a structured `.json.log` file, and a console stream handler at INFO level.
+By default this uses `LoggingMode.BASIC_SINGLE_FILE`, which writes a readable `.log` file directly into `data/logs/` and adds a console stream handler at INFO level.
 
 ---
 
@@ -44,24 +44,32 @@ Pass a `LoggingMode` to select the environment profile:
 ```python
 from loggers import configure_logging, LoggingMode
 
-# Development (default): folder-per-run, DEBUG to files, INFO to console
-configure_logging(mode=LoggingMode.DEVELOPMENT)
+# Single readable log file in flat directory, INFO to console (default)
+configure_logging(mode=LoggingMode.BASIC_SINGLE_FILE)
 
-# Test: daily folder only, DEBUG to files, no console output
-configure_logging(mode=LoggingMode.TEST)
+# Single JSON log file in flat directory, INFO to console
+configure_logging(mode=LoggingMode.BASIC_JSON_FILE)
 
-# Production: TimedRotatingFileHandler (rotates at midnight, keeps 30 days),
-#             DEBUG to files, WARNING+ to console
-configure_logging(mode=LoggingMode.PRODUCTION)
+# Per-run timestamped folder, readable + JSON files, INFO to console
+configure_logging(mode=LoggingMode.DIRECTORY_PER_RUN)
+
+# Daily folder, readable + JSON files, no console output
+configure_logging(mode=LoggingMode.DAILY_DIRECTORY)
+
+# Flat directory, TimedRotatingFileHandler (rotates at midnight, keeps 30 days),
+# readable + JSON files, WARNING+ to console
+configure_logging(mode=LoggingMode.BASIC_ROTATING_HANDLER)
 ```
 
-**Log directory layout by mode:**
+**Mode defaults summary:**
 
-Mode        | Layout
------------ | ----------------------------------------------
-DEVELOPMENT | `data/logs/YYYY-MM-DD/YYYY-MM-DD_HHMMSS/`
-TEST        | `data/logs/YYYY-MM-DD/`
-PRODUCTION  | `data/logs/loggers.json.log` (rotating)
+Mode                    | Directory layout                          | Text file | JSON file | Stream level
+----------------------- | ----------------------------------------- | --------- | --------- | ------------
+`BASIC_SINGLE_FILE`     | `data/logs/` (flat)                       | ✓         | —         | INFO
+`BASIC_JSON_FILE`       | `data/logs/` (flat)                       | —         | ✓         | INFO
+`DIRECTORY_PER_RUN`     | `data/logs/YYYY-MM-DD/YYYY-MM-DD_HHMMSS/` | ✓         | ✓         | INFO
+`DAILY_DIRECTORY`       | `data/logs/YYYY-MM-DD/`                   | ✓         | ✓         | *(none)*
+`BASIC_ROTATING_HANDLER`| `data/logs/` (flat, rotating)             | ✓         | ✓         | WARNING
 
 ---
 
@@ -71,11 +79,16 @@ Any mode default can be overridden with explicit keyword arguments:
 
 ```python
 configure_logging(
-    log_directory="my/custom/logs",
-    mode=LoggingMode.PRODUCTION,
-    stream=False,             # suppress console output
-    stream_level=logging.ERROR,
-    file_level=logging.INFO,
+    log_directory="my/custom/logs",   # default: "data/logs"
+    mode=LoggingMode.BASIC_ROTATING_HANDLER,
+    stream=False,                     # suppress console output
+    stream_level=logging.ERROR,       # override console level
+    file_level=logging.INFO,          # override text file level
+    json_level=logging.WARNING,       # override JSON file level
+    file_format=LoggingFormats.FORMAT_FUNC_NAME,  # override text format
+    rotating=True,                    # use TimedRotatingFileHandler
+    file=False,                       # omit the text file handler
+    json=False,                       # omit the JSON file handler
 )
 ```
 
@@ -137,8 +150,8 @@ parser.to_dataframe(records)  # pass a filtered list, or None for all records
 ```python
 from loggers import get_log_directories, get_log_files, delete_todays_logs, clear_logs
 
-get_log_directories()        # list of date folders in data/logs/
-get_log_files()              # dict: date folder -> list of log file names
+get_log_directories()        # list of entries in data/logs/
+get_log_files()              # dict: directory -> list of log file names
 delete_todays_logs()         # delete today's log directory
 clear_logs()                 # delete all log directories
 ```
@@ -152,6 +165,7 @@ clear_logs()                 # delete all log directories
 - 1.2: Add `configure_logging`, JSON log generation, and `JSONLogParser`
 - 1.3: Rewrite `HandlerController` and `configure_logging` tests; add `_reset()` for test isolation; add PERFORMANCE log level
 - 1.4: Add `LoggingMode` enum (DEVELOPMENT / TEST / PRODUCTION); add `TimedRotatingFileHandler` support for PRODUCTION mode; `configure_logging` keyword overrides for stream, stream_level, file_level
+- 1.5: Rename modes to BASIC_SINGLE_FILE, BASIC_JSON_FILE, DIRECTORY_PER_RUN, DAILY_DIRECTORY, BASIC_ROTATING_HANDLER; add `file`, `json`, `json_level`, `file_format`, `rotating` overrides to `configure_logging`; default mode changed to BASIC_SINGLE_FILE
 
 ## License
 
