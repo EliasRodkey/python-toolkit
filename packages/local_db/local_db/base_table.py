@@ -94,7 +94,7 @@ class BaseTable(Base):
     @classmethod
     def get_column_python_types(cls):
         """Returns a dictionary mapping column names to their types."""
-        return {column.name: SQLA_TYPE_MAP[column.type] for column in cls.__table__.columns}
+        return {column.name: SQLA_TYPE_MAP[type(column.type)] for column in cls.__table__.columns}
     
     @property
     def column_names(self):
