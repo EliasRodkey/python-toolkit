@@ -4,7 +4,8 @@ loggers.utils.py
 A python module which contains generic functions related logging and log file management.
 
 Class:
-    ELoggingFormats: an Enum class which stores different formatting strings for logger formatting
+    LoggingMode: Named logging profiles for configure_logging().
+    LoggingFormats: an Enum class which stores different formatting strings for logger formatting
 
 Functions:
     create_datestamp: generates todays date as a string
@@ -35,17 +36,19 @@ class LoggingMode(Enum):
     """
     Named logging profiles for configure_logging().
 
-    DIRECTORY_PER_RUN:      folder-per-run, DEBUG to file, INFO to stream
-    DAILY_DIRECTORY:        daily folder only, DEBUG to file, no stream handler
+    DIRECTORY_PER_RUN: folder-per-run, DEBUG to file, INFO to stream
+    DAILY_DIRECTORY: daily folder only, DEBUG to file, no stream handler
     BASIC_ROTATING_HANDLER: flat directory, TimedRotatingFileHandler, DEBUG to file, WARNING to stream
     """
+    BASIC_SINGLE_FILE = "basic_single_file"
+    BASIC_JSON_FILE = "basic_json_file"
     DIRECTORY_PER_RUN = "directory_per_run"
     DAILY_DIRECTORY = "daily_directory"
     BASIC_ROTATING_HANDLER = "basic_rotating_handler"
 
 
 
-class ELoggingFormats(str, Enum):
+class LoggingFormats(str, Enum):
     """
     Contains different format strings for logging output
     """
@@ -62,9 +65,8 @@ class ELoggingFormats(str, Enum):
     LOGGER_NAME_BRACKETS = "[%(name)s]"
     MESSAGE = "%(message)s"
 
-    FORMAT_BASIC = f"{ASCTIME} - {LOGGER_NAME} - {LOG_LEVEL} - {MESSAGE}"
-    FORMAT_LOGGER_NAME = f"{ASCTIME} - {LOGGER_NAME} - {LOG_LEVEL} - {MESSAGE}"
-    FORMAT_LOGGER_NAME_BRACKETS = f"{ASCTIME} - {LOGGER_NAME_BRACKETS}{LOG_LEVEL_BRACKETS}: {MESSAGE}"
+    FORMAT_BASIC = f"{ASCTIME} - {LOG_LEVEL} - {LOGGER_NAME} - {MESSAGE}"
+    FORMAT_LOGGER_NAME_BRACKETS = f"{ASCTIME} - {LOG_LEVEL_BRACKETS}{LOGGER_NAME_BRACKETS}: {MESSAGE}"
     FORMAT_FUNC_NAME = f"{ASCTIME} {LOG_LEVEL_BRACKETS}{FUNC_NAME_BRACKETS}: {MESSAGE}"
     FORMAT_MODULE_FUNC_NAME = f"{ASCTIME} {LOG_LEVEL_BRACKETS}{MODULE_BRACKETS}{FUNC_NAME_BRACKETS}: {MESSAGE}"
 

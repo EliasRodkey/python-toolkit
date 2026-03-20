@@ -18,7 +18,7 @@ import os
 from typing import Tuple, List
 
 # Package level imports
-from loggers.utils import ELoggingFormats, LOG_FILE_DEFAULT_DIRECTORY, LoggingMode, create_datestamp, create_log_datetime_stamp
+from loggers.utils import LoggingFormats, LOG_FILE_DEFAULT_DIRECTORY, LoggingMode, create_datestamp, create_log_datetime_stamp
 
 
 
@@ -97,7 +97,9 @@ class HandlerController():
         stream_level: int = logging.INFO,
         file_level: int = logging.DEBUG,
         json_level: int = logging.DEBUG,
+        file_format: LoggingFormats=LoggingFormats.FORMAT_BASIC,
         rotating: bool = False,
+        file: bool = True,
         json: bool = True,
     ):
         """If this is the first time the class is being instantiated, set up the log folder and handlers."""
@@ -122,7 +124,10 @@ class HandlerController():
                 cls._add_handler("json", cls.json_file_handler)
             if cls.stream_handler is not None:
                 cls._add_handler("stream", cls.stream_handler)
-            cls.add_file_handler("main", file_level=file_level)
+
+            if file:
+                cls.add_file_handler("main", text_format=file_format, file_level=file_level)
+
             cls._initialized = True
 
         os.makedirs(cls.run_directory, exist_ok=True)
@@ -134,17 +139,25 @@ class HandlerController():
         """Generates the log directory and datetime stamp based on the active mode."""
         log_datetime_stamp = create_log_datetime_stamp()
 
-        if mode == LoggingMode.DIRECTORY_PER_RUN:
-            # Folder-per-run: data/logs/YYYY-MM-DD/YYYY-MM-DD_HHMMSS/
-            daily_log_stamp = create_datestamp()
-            run_directory = os.path.join(log_directory, daily_log_stamp, log_datetime_stamp)
-        elif mode == LoggingMode.DAILY_DIRECTORY:
-            # Daily folder only: data/logs/YYYY-MM-DD/
-            daily_log_stamp = create_datestamp()
-            run_directory = os.path.join(log_directory, daily_log_stamp)
-        else:  # BASIC_ROTATING_HANDLER
-            # Flat directory: data/logs/
-            run_directory = log_directory
+        match mode:
+            case LoggingMode.BASIC_SINGLE_FILE:
+                # Single log file created in central directory per run
+                daily_log_stamp = create_datestamp()
+                run_directory = log_directory
+
+            case LoggingMode.DIRECTORY_PER_RUN:
+                # Folder-per-run: data/logs/YYYY-MM-DD/YYYY-MM-DD_HHMMSS/
+                daily_log_stamp = create_datestamp()
+                run_directory = os.path.join(log_directory, daily_log_stamp, log_datetime_stamp)
+
+            case LoggingMode.DAILY_DIRECTORY:
+                # Daily folder only: data/logs/YYYY-MM-DD/
+                daily_log_stamp = create_datestamp()
+                run_directory = os.path.join(log_directory, daily_log_stamp)
+
+            case LoggingMode.BASIC_ROTATING_HANDLER:
+                # Flat directory: data/logs/
+                run_directory = log_directory
 
         os.makedirs(run_directory, exist_ok=True)
         return (log_datetime_stamp, run_directory)
@@ -172,13 +185,13 @@ class HandlerController():
     def _create_stream_log_handler(cls, level: int = logging.INFO) -> logging.StreamHandler:
         """Creates a stream handler at the given level."""
         stream_handler = logging.StreamHandler()
-        formatter = logging.Formatter(ELoggingFormats.FORMAT_BASIC)
+        formatter = logging.Formatter(LoggingFormats.FORMAT_BASIC)
         stream_handler.setFormatter(formatter)
         stream_handler.setLevel(level)
         return stream_handler
 
     @classmethod
-    def add_file_handler(cls, run_name: str, text_format: str = ELoggingFormats.FORMAT_BASIC, file_level: int = logging.DEBUG):
+    def add_file_handler(cls, run_name: str, text_format: str = LoggingFormats.FORMAT_BASIC, file_level: int = logging.DEBUG):
         """Adds a readable file handler to the Handler Controller."""
         readable_file_path = os.path.join(cls.run_directory, f"{cls.log_datetime_stamp}_{run_name}.log")
         readable_text_handler = logging.FileHandler(readable_file_path)
