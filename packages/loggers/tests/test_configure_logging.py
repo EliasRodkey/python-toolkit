@@ -163,8 +163,8 @@ def test_add_new_run_name_logger(test_handler):
 
 @pytest.fixture()
 def test_mode_test(tmp_path):
-    """Fixture for TEST mode using an isolated temp directory."""
-    handler_controller = configure_logging(log_directory=str(tmp_path), mode=LoggingMode.TEST)
+    """Fixture for DAILY_DIRECTORY mode using an isolated temp directory."""
+    handler_controller = configure_logging(log_directory=str(tmp_path), mode=LoggingMode.DAILY_DIRECTORY)
     yield handler_controller
     root_logger = logging.getLogger()
     root_logger.handlers.clear()
@@ -173,8 +173,22 @@ def test_mode_test(tmp_path):
 
 @pytest.fixture()
 def test_mode_production(tmp_path):
-    """Fixture for PRODUCTION mode using an isolated temp directory."""
-    handler_controller = configure_logging(log_directory=str(tmp_path), mode=LoggingMode.PRODUCTION)
+    """Fixture for BASIC_ROTATING_HANDLER mode using an isolated temp directory."""
+    handler_controller = configure_logging(log_directory=str(tmp_path), mode=LoggingMode.BASIC_ROTATING_HANDLER)
+    yield handler_controller
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    handler_controller._reset()
+
+
+@pytest.fixture()
+def test_mode_rotating_override(tmp_path):
+    """Fixture to test rotating=True override on a non-rotating mode."""
+    handler_controller = configure_logging(
+        log_directory=str(tmp_path),
+        mode=LoggingMode.DIRECTORY_PER_RUN,
+        rotating=True,
+    )
     yield handler_controller
     root_logger = logging.getLogger()
     root_logger.handlers.clear()
@@ -182,13 +196,13 @@ def test_mode_production(tmp_path):
 
 
 def test_test_mode_no_stream_handler(test_mode_test):
-    """TEST mode should not create a stream handler on the controller."""
+    """DAILY_DIRECTORY mode should not create a stream handler on the controller."""
     assert test_mode_test.stream_handler is None
     assert "stream" not in test_mode_test.handlers
 
 
 def test_test_mode_daily_folder(test_mode_test):
-    """TEST mode run_directory should be a daily folder (no per-run subfolder)."""
+    """DAILY_DIRECTORY mode run_directory should be a daily folder (no per-run subfolder)."""
     lc = test_mode_test
     folder_name = os.path.basename(lc.run_directory)
     assert len(folder_name) == 10  # YYYY-MM-DD
@@ -196,13 +210,19 @@ def test_test_mode_daily_folder(test_mode_test):
 
 
 def test_production_mode_stream_handler_at_warning(test_mode_production):
-    """PRODUCTION mode stream handler should be at WARNING level."""
+    """BASIC_ROTATING_HANDLER mode stream handler should be at WARNING level."""
     lc = test_mode_production
     assert lc.stream_handler is not None
     assert lc.stream_handler.level == logging.WARNING
 
 
 def test_production_mode_timed_rotating_json_handler(test_mode_production):
-    """PRODUCTION mode should use TimedRotatingFileHandler for the JSON log."""
+    """BASIC_ROTATING_HANDLER mode should use TimedRotatingFileHandler for the JSON log."""
     lc = test_mode_production
+    assert isinstance(lc.json_file_handler, TimedRotatingFileHandler)
+
+
+def test_rotating_override_uses_timed_rotating_handler(test_mode_rotating_override):
+    """rotating=True should use TimedRotatingFileHandler regardless of mode."""
+    lc = test_mode_rotating_override
     assert isinstance(lc.json_file_handler, TimedRotatingFileHandler)

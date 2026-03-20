@@ -157,21 +157,36 @@ class TestHandlerControler:
 
 @pytest.fixture()
 def test_handler_test_mode(tmp_path):
-    """Fixture for TEST mode using an isolated temp directory."""
+    """Fixture for DAILY_DIRECTORY mode using an isolated temp directory."""
     add_performance_level()
-    controller = HandlerController(log_directory=str(tmp_path), mode=LoggingMode.TEST, stream=False)
+    controller = HandlerController(log_directory=str(tmp_path), mode=LoggingMode.DAILY_DIRECTORY, stream=False)
     yield controller
     controller._reset()
 
 
 @pytest.fixture()
 def test_handler_production_mode(tmp_path):
-    """Fixture for PRODUCTION mode using an isolated temp directory."""
+    """Fixture for BASIC_ROTATING_HANDLER mode using an isolated temp directory."""
     add_performance_level()
     controller = HandlerController(
         log_directory=str(tmp_path),
-        mode=LoggingMode.PRODUCTION,
+        mode=LoggingMode.BASIC_ROTATING_HANDLER,
         stream_level=logging.WARNING,
+        rotating=True,
+    )
+    yield controller
+    controller._reset()
+
+
+@pytest.fixture()
+def test_handler_rotating_override(tmp_path):
+    """Fixture to test rotating=True override on a non-rotating mode."""
+    add_performance_level()
+    controller = HandlerController(
+        log_directory=str(tmp_path),
+        mode=LoggingMode.DAILY_DIRECTORY,
+        stream=False,
+        rotating=True,
     )
     yield controller
     controller._reset()
@@ -217,4 +232,9 @@ class TestHandlerControllerModes:
 
     def test_mode_stored_as_class_variable(self, test_handler_test_mode):
         """The active mode should be stored on the class."""
-        assert HandlerController.mode == LoggingMode.TEST
+        assert HandlerController.mode == LoggingMode.DAILY_DIRECTORY
+
+    def test_rotating_override_uses_timed_rotating_handler(self, test_handler_rotating_override):
+        """rotating=True should use TimedRotatingFileHandler regardless of mode."""
+        lc = test_handler_rotating_override
+        assert isinstance(lc.json_file_handler, TimedRotatingFileHandler)
