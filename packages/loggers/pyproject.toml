@@ -8,4 +8,4 @@ version = "1.4.0"
 description = "robust and generic logging system for Python"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 license = {text = "MIT"}
-dependencies = ["requests", "numpy"]  # List your package dependencies here
+dependencies = []
