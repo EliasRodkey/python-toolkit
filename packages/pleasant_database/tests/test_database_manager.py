@@ -30,10 +30,10 @@ import pytest
 import time
 
 # local imports
-from local_db import DEFAULT_DB_DIRECTORY
-from local_db.base_table import DatabaseIntegrityError, ItemNotFoundError
-from local_db.database_file import DatabaseFile
-from local_db.database_manager import DatabaseManager
+from pleasant_database import DEFAULT_DB_DIRECTORY
+from pleasant_database.base_table import DatabaseIntegrityError, ItemNotFoundError
+from pleasant_database.database_file import DatabaseFile
+from pleasant_database.database_manager import DatabaseManager
 from .mock_table_object import MockTableObject, DatetimeMockTableObject
 from .mock_table_object import TEST_ENTRY_1, TEST_ENTRY_2, TEST_ENTRY_3, INVALID_ENTRY, INVALID_DF
 from .mock_table_object import DATE_ENTRY_1, DATE_ENTRY_2, DATE_ENTRY_3

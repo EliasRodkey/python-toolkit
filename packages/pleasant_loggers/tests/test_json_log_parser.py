@@ -7,10 +7,10 @@ Unit test for json_log_parser.py using pytest
 import logging
 import pytest
 
-from loggers.json_log_parser import JSONLogParser, LogRecord
-from loggers.handler_controller import HandlerController
-from loggers.configure_logging import configure_logging
-from loggers.utils import clear_logs, add_performance_level
+from pleasant_loggers.json_log_parser import JSONLogParser, LogRecord
+from pleasant_loggers.handler_controller import HandlerController
+from pleasant_loggers.configure_logging import configure_logging
+from pleasant_loggers.utils import clear_logs, add_performance_level
 
 
 @pytest.fixture()

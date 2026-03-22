@@ -28,8 +28,8 @@ sys.path.insert(0, ".")
 import os
 
 # local imports
-from local_db import DEFAULT_DB_DIRECTORY
-from local_db.database_file import DatabaseFile
+from pleasant_database import DEFAULT_DB_DIRECTORY
+from pleasant_database.database_file import DatabaseFile
 
 
 

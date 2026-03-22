@@ -16,7 +16,7 @@ sys.path.insert(0, ".")
 from sqlalchemy.exc import OperationalError
 
 # local imports
-from local_db.database_connections import create_engine_conn, create_session
+from pleasant_database.database_connections import create_engine_conn, create_session
 
 
 # Constants

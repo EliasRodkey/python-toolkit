@@ -18,7 +18,7 @@ import os
 from typing import Tuple, List
 
 # Package level imports
-from loggers.utils import LoggingFormats, LOG_FILE_DEFAULT_DIRECTORY, LoggingMode, create_datestamp, create_log_datetime_stamp
+from pleasant_loggers.utils import LoggingFormats, LOG_FILE_DEFAULT_DIRECTORY, LoggingMode, create_datestamp, create_log_datetime_stamp
 
 
 

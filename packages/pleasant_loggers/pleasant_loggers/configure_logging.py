@@ -11,8 +11,8 @@ Functions:
 import logging
 
 # Local imports
-from loggers.handler_controller import HandlerController
-from loggers.utils import LOG_FILE_DEFAULT_DIRECTORY, LoggingFormats, LoggingMode, add_performance_level
+from pleasant_loggers.handler_controller import HandlerController
+from pleasant_loggers.utils import LOG_FILE_DEFAULT_DIRECTORY, LoggingFormats, LoggingMode, add_performance_level
 
 # Mode defaults: all handler options keyed by name
 _MODE_DEFAULTS = {

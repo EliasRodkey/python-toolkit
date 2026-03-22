@@ -33,10 +33,10 @@ import pandas as pd
 import sqlalchemy
 
 # local imports
-from local_db.database_connections import create_engine_conn, create_session
-from local_db.base_table import BaseTable, DatabaseIntegrityError, ItemNotFoundError
-from local_db.database_file import DatabaseFile
-from local_db.utils import LoggingExtras, map_dtype_list_to_sql, orm_list_to_dataframe
+from pleasant_database.database_connections import create_engine_conn, create_session
+from pleasant_database.base_table import BaseTable, DatabaseIntegrityError, ItemNotFoundError
+from pleasant_database.database_file import DatabaseFile
+from pleasant_database.utils import LoggingExtras, map_dtype_list_to_sql, orm_list_to_dataframe
 
 
 # Initialize module logger

@@ -14,8 +14,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # Local Imports
-from local_db import DEFAULT_DB_DIRECTORY
-from local_db.utils import LoggingExtras
+from pleasant_database import DEFAULT_DB_DIRECTORY
+from pleasant_database.utils import LoggingExtras
 
 # Initialize module logger
 import logging

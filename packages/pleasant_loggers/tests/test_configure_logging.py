@@ -10,9 +10,9 @@ from logging.handlers import TimedRotatingFileHandler
 import pytest
 import os
 
-from loggers.configure_logging import configure_logging
-from loggers.handler_controller import HandlerController
-from loggers.utils import LoggingMode, clear_logs
+from pleasant_loggers.configure_logging import configure_logging
+from pleasant_loggers.handler_controller import HandlerController
+from pleasant_loggers.utils import LoggingMode, clear_logs
 
 
 @pytest.fixture()

@@ -8,7 +8,7 @@ import time
 import os
 import shutil
 
-from loggers.utils import (
+from pleasant_loggers.utils import (
     LOG_FILE_DEFAULT_DIRECTORY, 
     create_datestamp,
     compose_global_run_id,

@@ -10,8 +10,8 @@ from logging.handlers import TimedRotatingFileHandler
 import pytest
 import os
 
-from loggers.handler_controller import HandlerController
-from loggers.utils import LoggingMode, clear_logs, add_performance_level
+from pleasant_loggers.handler_controller import HandlerController
+from pleasant_loggers.utils import LoggingMode, clear_logs, add_performance_level
 
 
 @pytest.fixture()

@@ -28,8 +28,8 @@ import sqlite3
 import pytest
 
 # local imports
-from local_db.utils import check_db_exists, is_db_file, map_dtype_to_sql, map_dtype_list_to_sql, orm_list_to_dataframe
-from local_db.utils import Column, Integer, Float, String, Boolean, DateTime, LargeBinary, create_engine
+from pleasant_database.utils import check_db_exists, is_db_file, map_dtype_to_sql, map_dtype_list_to_sql, orm_list_to_dataframe
+from pleasant_database.utils import Column, Integer, Float, String, Boolean, DateTime, LargeBinary, create_engine
 
 
 # Constants

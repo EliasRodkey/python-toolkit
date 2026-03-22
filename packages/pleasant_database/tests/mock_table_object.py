@@ -18,7 +18,7 @@ from datetime import datetime, date
 import pytest
 
 # local imports
-from local_db.base_table import BaseTable
+from pleasant_database.base_table import BaseTable
 from sqlalchemy import Column, Integer, String, Date, DateTime
 import pandas as pd
 
