@@ -3,9 +3,8 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pleasant-databases"
+name = "pleasant-database"
 version = "1.3.0"
-where = ["."]
 description = "package for handling local database files and data"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 license = "MIT"
