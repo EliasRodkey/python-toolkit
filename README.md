@@ -6,8 +6,8 @@ Custom python tooling packages that contain generic config and helper classes an
 
 ## Contents
 
-* `loggers`: custom logging setup package with compacted customizability of logging features including the addition of JSON logging for machine readability as well as a simple JSON log parser.
-* `local_db`: SQLAlchemy based local database wrapper classes and functions to make database setup and CRUD easy in new projects.
+* `pleasant_logger`: custom logging setup package with compacted customizability of logging features including the addition of JSON logging for machine readability as well as a simple JSON log parser.
+* `pleasant_database`: SQLAlchemy based local database wrapper classes and functions to make database setup and CRUD easy in new projects.
 
 ## Usage
 
