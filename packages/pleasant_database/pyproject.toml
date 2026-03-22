@@ -3,13 +3,19 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "loggers"
-version = "1.4.0"
+name = "pleasant-databases"
+version = "1.3.0"
 where = ["."]
-description = "robust and generic logging system for Python"
+description = "package for handling local database files and data"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
-license = {text = "MIT"}
-dependencies = []
+license = "MIT"
+dependencies = [
+    "requests", 
+    "numpy", 
+    "sqlalchemy", 
+    "loggers", 
+    "pandas"
+    ] 
 
 [tool.setuptools.packages.find]
 where = ["."] 

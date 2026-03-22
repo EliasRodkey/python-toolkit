@@ -11,7 +11,7 @@ Modules:
     - utils.py:
 """
 # Metadata
-__version__ = "1.2.6"
+__version__ = "1.3.0"
 __author__ = "Elias Rodkey"
 
 # Package Level Constants

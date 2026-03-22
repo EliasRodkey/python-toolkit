@@ -11,5 +11,5 @@ import logging
 logging.setLoggerClass(StructuredLogger)
 
 # Define package-level variables
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 __Author__ = "Elias Rodkey"
