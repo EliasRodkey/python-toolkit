@@ -1,10 +1,11 @@
 [build-system]
-requires = ["setuptools", "wheel", "logging"]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "local_db"
 version = "1.2.6"
+where = ["."]
 description = "package for handling local database files and data"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 license = "MIT"

@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "loggers"
 version = "1.4.0"
+where = ["."]
 description = "robust and generic logging system for Python"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 license = {text = "MIT"}
