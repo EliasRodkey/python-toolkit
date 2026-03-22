@@ -10,3 +10,6 @@ description = "robust and generic logging system for Python"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 license = {text = "MIT"}
 dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["."] 
