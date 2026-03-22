@@ -1,2 +1,17 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [tool.uv.workspace]
 members = ["packages/*"]
+
+[project]
+name = "python-toolkit"
+version = "1.0.0"
+description = "A collection of utility packages"
+authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
+license = {text = "MIT"}
+dependencies = [
+    "loggers",
+    "local_db",
+]
