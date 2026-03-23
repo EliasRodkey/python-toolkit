@@ -1,6 +1,6 @@
 #!python3
 """
-local_db_handler
+pleasant_database
 
 This package contains modules related to local database connection / creation / deletion / editing / etc.
 
@@ -11,7 +11,7 @@ Modules:
     - utils.py:
 """
 # Metadata
-__version__ = "1.3.2"
+__version__ = "1.3.3"
 __author__ = "Elias Rodkey"
 
 # Package Level Constants
@@ -20,7 +20,7 @@ DEFAULT_DB_DIRECTORY = os.path.join(os.getcwd(), "data", "dbs")
 LOG_DIRECTORY = os.path.join(os.getcwd(), "data", "logs")
 
 # Configure root logger
-from loggers import configure_logging
+from pleasant_loggers import configure_logging
 handler_controller = configure_logging(log_directory=LOG_DIRECTORY)
 
 # Imports modules, functions, and classes for clean package interface

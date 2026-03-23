@@ -1,6 +1,6 @@
 #!python3
 """
-local_db.database_manager.py
+pleasant_database.database_manager.py
 
 This module contains a database object class.
 logger in this module used LoggingExtras.TABLE_NAME to refer to the current table class name in json logging.

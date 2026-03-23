@@ -1,4 +1,4 @@
-# local_db_handler
+# pleasant_database
 
 this package is a modular python package that allows for easy
 creation, reading, editing, and deleting local database files
@@ -12,12 +12,13 @@ creation, reading, editing, and deleting local database files
 **Install Package**
 Ensure you have access to the github repository
 Run the command:
-    pip install git+<https://github.com/EliasRodkey/local_db.git>
+    pip install pleasant_database
+    GitHub repository: <https://github.com/EliasRodkey/python-toolkit>
 
 ### Import Package
 
 ```python
-From local_db_handler import DatabaseFile, DatabaseManager, BaseTable
+From pleasant_database import DatabaseFile, DatabaseManager, BaseTable
 ```
 
 ### Set Up Table Object

@@ -22,7 +22,7 @@ Loggers provides a standardized way to configure and manage log output across a 
 
 ```python
 import logging
-from loggers import configure_logging
+from pleasant_loggers import configure_logging
 
 log_controller = configure_logging()
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ By default this uses `LoggingMode.BASIC_SINGLE_FILE`, which writes a readable `.
 Pass a `LoggingMode` to select the environment profile:
 
 ```python
-from loggers import configure_logging, LoggingMode
+from pleasant_loggers import configure_logging, LoggingMode
 
 # Single readable log file in flat directory, INFO to console (default)
 configure_logging(mode=LoggingMode.BASIC_SINGLE_FILE)
@@ -122,7 +122,7 @@ worker_logger.addHandler(log_controller.get_handler("worker_thread"))
 Parse and filter the structured JSON log file produced by each run:
 
 ```python
-from loggers import JSONLogParser
+from pleasant_loggers import JSONLogParser
 
 parser = JSONLogParser(log_controller.json_file_path)
 parser.load()
@@ -148,7 +148,7 @@ parser.to_dataframe(records)  # pass a filtered list, or None for all records
 ### Log file utilities
 
 ```python
-from loggers import get_log_directories, get_log_files, delete_todays_logs, clear_logs
+from pleasant_loggers import get_log_directories, get_log_files, delete_todays_logs, clear_logs
 
 get_log_directories()        # list of entries in data/logs/
 get_log_files()              # dict: directory -> list of log file names

@@ -1,5 +1,5 @@
 """
-local_db.base_table.py
+pleasant_database.base_table.py
 This module defines a base table class using SQLAlchemy"s declarative base. 
 It provides a foundation for creating database models and includes utility 
 functions to retrieve column names and their corresponding types.

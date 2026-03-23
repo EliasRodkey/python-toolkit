@@ -1,6 +1,6 @@
 #!python3
 """
-local_db.database_connections.py
+pleasant_database.database_connections.py
 
 This module contains functions which allow for connections to existing local database files
 

@@ -2,7 +2,7 @@
 """
 tests.test_database_manager.py
 
-This module contains tests for the DatabaseManager class from the local_db.database_manager module.
+This module contains tests for the DatabaseManager class from the pleasant_database.database_manager module.
 
 Classes:
     TestDatabaseManager:
@@ -63,7 +63,7 @@ def clean_database():
 
 
 class TestDatabaseManager:
-    """Tests the DatabaseFile class from the local_db.database_file module"""
+    """Tests the DatabaseFile class from the pleasant_database.database_file module"""
 
     # Functions
     def test_initialize_manager(self, clean_database):

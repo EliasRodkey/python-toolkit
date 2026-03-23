@@ -2,7 +2,7 @@
 """
 tests.test_database_file.py
 
-This module contains tests for the DatabaseFile class from the local_db.database_file module.
+This module contains tests for the DatabaseFile class from the pleasant_database.database_file module.
 
 Functions:
     DatabaseFile.create()
