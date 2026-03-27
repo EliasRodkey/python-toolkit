@@ -15,12 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # Full history needed for cross-branch diff
+          fetch-depth: 2
 
       - name: Detect which packages changed
         id: changed
         run: |
-          git fetch origin ${{ github.base_ref }}
           git diff --name-only origin/${{ github.base_ref }}...HEAD > changed_files.txt
           cat changed_files.txt
           echo "loggers=$(grep -c 'packages/pleasant_loggers/' changed_files.txt || true)" >> $GITHUB_OUTPUT
