@@ -24,7 +24,7 @@ from pleasant_loggers import configure_logging
 handler_controller = configure_logging(log_directory=LOG_DIRECTORY)
 
 # Imports modules, functions, and classes for clean package interface
-from .base_table import BaseTable, DatabaseIntegrityError
+from .base_table import BaseTable, DatabaseIntegrityError, ItemNotFoundError
 from .database_connections import create_engine_conn, create_session
 from .database_file import DatabaseFile
 from .database_manager import DatabaseManager

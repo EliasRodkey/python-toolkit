@@ -2,27 +2,59 @@ name: Publish to PyPI
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+    paths:
+      - 'packages/pleasant_loggers/pyproject.toml'
+      - 'packages/pleasant_database/pyproject.toml'
 
 jobs:
-  publish:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      loggers: ${{ steps.changed.outputs.loggers }}
+      database: ${{ steps.changed.outputs.database }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Detect which packages changed
+        id: changed
+        run: |
+          git diff --name-only HEAD~1 HEAD > changed_files.txt
+          cat changed_files.txt
+          echo "loggers=$(grep -c 'packages/pleasant_loggers/pyproject.toml' changed_files.txt || true)" >> $GITHUB_OUTPUT
+          echo "database=$(grep -c 'packages/pleasant_database/pyproject.toml' changed_files.txt || true)" >> $GITHUB_OUTPUT
+
+  publish-loggers:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.loggers != '0'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
       id-token: write
-
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@v5
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
-
+        uses: astral-sh/setup-uv@v6
       - name: Build pleasant-loggers
         run: uv build --package pleasant-loggers
+      - name: Publish to PyPI
+        run: uv publish
 
+  publish-database:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.database != '0'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
       - name: Build pleasant-database
         run: uv build --package pleasant-database
-
       - name: Publish to PyPI
-        run: uv publish --check-url https://upload.pypi.org/legacy/ || true
+        run: uv publish
