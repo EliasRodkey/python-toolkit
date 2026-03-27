@@ -1,2 +1,9 @@
 [tool.uv.workspace]
 members = ["packages/*"]
+
+[tool.uv.sources]
+pleasant-loggers = { workspace = true }
+pleasant-database = { workspace = true }
+
+[tool.uv]
+requires-python = ">=3.13"
