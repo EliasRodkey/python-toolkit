@@ -36,7 +36,7 @@ jobs:
         with:
           python-version: '3.13'
       - name: Install dependencies
-        run: uv sync --package pleasant-loggers
+        run: uv sync --package pleasant-loggers --extra dev
       - name: Run tests
         run: uv run --package pleasant-loggers pytest packages/pleasant_loggers/tests/
 
@@ -50,6 +50,6 @@ jobs:
         with:
           python-version: '3.13'
       - name: Install dependencies
-        run: uv sync --package pleasant-database
+        run: uv sync --package pleasant-database --extra dev
       - name: Run tests
         run: uv run --package pleasant-database pytest packages/pleasant_database/tests/

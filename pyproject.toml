@@ -5,5 +5,5 @@ members = ["packages/*"]
 pleasant-loggers = { workspace = true }
 pleasant-database = { workspace = true }
 
-[project]
+[tool.uv]
 requires-python = ">=3.13"
