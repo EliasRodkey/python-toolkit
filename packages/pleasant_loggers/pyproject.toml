@@ -14,3 +14,6 @@ dependencies = []
 [tool.setuptools.packages.find]
 where = ["."]
 exclude = ["tests*", "test*"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
