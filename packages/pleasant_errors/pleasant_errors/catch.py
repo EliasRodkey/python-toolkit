@@ -4,17 +4,17 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from pleasant_errors.models import AppError, StructuredError
+from pleasant_errors.models import Error, StructuredError
 from pleasant_errors.result import Err, Ok
 
 _default_logger = logging.getLogger("pleasant_errors")
 
 
 def catch(*exception_types: type[Exception], logger: logging.Logger | None = None):
-    """Decorator that catches specified exception types and returns Err(AppError).
+    """Decorator that catches specified exception types and returns Err(Error).
 
     On success, wraps the return value in Ok() unless it is already Ok or Err.
-    On a caught exception, logs and returns Err(AppError).
+    On a caught exception, logs and returns Err(Error).
     Exceptions not listed propagate normally.
 
     Args:
@@ -23,7 +23,7 @@ def catch(*exception_types: type[Exception], logger: logging.Logger | None = Non
 
     Example:
         @catch(ValueError, ConnectionError, logger=my_logger)
-        def fetch_user(user_id: int) -> Result[User, AppError]:
+        def fetch_user(user_id: int) -> Result[User, Error]:
             ...
     """
     if not exception_types:
@@ -50,7 +50,7 @@ def catch(*exception_types: type[Exception], logger: logging.Logger | None = Non
                     # TODO: rework logging once pleasant_loggers is updated to support structured fields
                     code = e.error_code if isinstance(e, StructuredError) else type(e).__name__.upper()
                     context = e.context if isinstance(e, StructuredError) else {}
-                    return Err(AppError(message=str(e), code=code, context=context))
+                    return Err(Error(message=str(e), code=code, context=context))
             return async_wrapper
         else:
             @functools.wraps(func)
@@ -67,7 +67,7 @@ def catch(*exception_types: type[Exception], logger: logging.Logger | None = Non
                     # TODO: rework logging once pleasant_loggers is updated to support structured fields
                     code = e.error_code if isinstance(e, StructuredError) else type(e).__name__.upper()
                     context = e.context if isinstance(e, StructuredError) else {}
-                    return Err(AppError(message=str(e), code=code, context=context))
+                    return Err(Error(message=str(e), code=code, context=context))
             return sync_wrapper
 
     return decorator

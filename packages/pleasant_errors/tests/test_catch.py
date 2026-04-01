@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import pytest
-from pleasant_errors import AppError, Err, Ok, catch
+from pleasant_errors import Error, Err, Ok, catch
 
 
 # --- Helpers ---
@@ -44,7 +44,7 @@ def test_sync_explicit_ok_passed_through():
 def test_sync_explicit_err_passed_through():
     @catch(ValueError)
     def fn():
-        return Err(AppError(message="manual", code="MANUAL_ERR"))
+        return Err(Error(message="manual", code="MANUAL_ERR"))
 
     result = fn()
     assert isinstance(result, Err)
@@ -60,7 +60,7 @@ def test_sync_plain_exception_returns_err():
 
     result = fn()
     assert isinstance(result, Err)
-    assert isinstance(result.error, AppError)
+    assert isinstance(result.error, Error)
     assert result.error.message == "bad input"
     assert result.error.code == "VALUEERROR"
     assert result.error.context == {}
@@ -126,7 +126,7 @@ def test_async_explicit_ok_passed_through():
 def test_async_explicit_err_passed_through():
     @catch(ValueError)
     async def fn():
-        return Err(AppError(message="async manual", code="ASYNC_ERR"))
+        return Err(Error(message="async manual", code="ASYNC_ERR"))
 
     result = asyncio.run(fn())
     assert isinstance(result, Err)

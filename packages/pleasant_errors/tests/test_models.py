@@ -1,13 +1,13 @@
-from pleasant_errors import AppError, StructuredError
+from pleasant_errors import Error, StructuredError
 
 
 def test_app_error_fields():
-    full = AppError(message="something failed", code="DB_1045", context={"table": "users"})
+    full = Error(message="something failed", code="DB_1045", context={"table": "users"})
     assert full.message == "something failed"
     assert full.code == "DB_1045"
     assert full.context == {"table": "users"}
 
-    minimal = AppError(message="oops", code="VALUEERROR")
+    minimal = Error(message="oops", code="VALUEERROR")
     assert minimal.message == "oops"
     assert minimal.code == "VALUEERROR"
     assert minimal.context == {}

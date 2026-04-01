@@ -12,7 +12,7 @@ class StructuredError(Protocol):
 
 
 @dataclass
-class AppError:
+class Error:
     message: str
     code: str
     context: dict[str, Any] = field(default_factory=dict)
