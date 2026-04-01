@@ -32,7 +32,7 @@ def catch(*exception_types: type[Exception], logger: logging.Logger | None = Non
             "Use @catch(Exception) to catch all exceptions."
         )
 
-    _logger = logger or _default_logger
+    _logger = logger if logger else _default_logger
 
     def decorator(func: Callable) -> Callable:
         if inspect.iscoroutinefunction(func):
@@ -45,7 +45,7 @@ def catch(*exception_types: type[Exception], logger: logging.Logger | None = Non
                     return Ok(result)
                 except exception_types as e:
                     _logger.error(
-                        f"[pleasant_errors] {type(e).__name__} in {func.__name__}: {e}"
+                        f"{type(e).__name__} CAUGHT in {func.__name__}: {e}"
                     )
                     # TODO: rework logging once pleasant_loggers is updated to support structured fields
                     code = e.error_code if isinstance(e, StructuredError) else type(e).__name__.upper()
@@ -62,7 +62,7 @@ def catch(*exception_types: type[Exception], logger: logging.Logger | None = Non
                     return Ok(result)
                 except exception_types as e:
                     _logger.error(
-                        f"[pleasant_errors] {type(e).__name__} in {func.__name__}: {e}"
+                        f"{type(e).__name__} CAUGHT in {func.__name__}: {e}"
                     )
                     # TODO: rework logging once pleasant_loggers is updated to support structured fields
                     code = e.error_code if isinstance(e, StructuredError) else type(e).__name__.upper()
