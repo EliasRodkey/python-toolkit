@@ -1,5 +1,5 @@
-import asyncio
 import functools
+import inspect
 import logging
 from collections.abc import Callable
 from typing import Any
@@ -35,7 +35,7 @@ def catch(*exception_types: type[Exception], logger: logging.Logger | None = Non
     _logger = logger or _default_logger
 
     def decorator(func: Callable) -> Callable:
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
             @functools.wraps(func)
             async def async_wrapper(*args: Any, **kwargs: Any) -> Ok | Err:
                 try:
