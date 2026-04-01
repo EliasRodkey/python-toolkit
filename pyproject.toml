@@ -4,3 +4,4 @@ members = ["packages/*"]
 [tool.uv.sources]
 pleasant-loggers = { workspace = true }
 pleasant-database = { workspace = true }
+pleasant-errors = { workspace = true }
