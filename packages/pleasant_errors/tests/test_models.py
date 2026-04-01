@@ -2,15 +2,15 @@ from pleasant_errors import AppError, StructuredError
 
 
 def test_app_error_fields():
-    err = AppError(message="something failed", code="DB_1045", context={"table": "users"})
-    assert err.message == "something failed"
-    assert err.code == "DB_1045"
-    assert err.context == {"table": "users"}
+    full = AppError(message="something failed", code="DB_1045", context={"table": "users"})
+    assert full.message == "something failed"
+    assert full.code == "DB_1045"
+    assert full.context == {"table": "users"}
 
-
-def test_app_error_default_context():
-    err = AppError(message="oops", code="VALUEERROR")
-    assert err.context == {}
+    minimal = AppError(message="oops", code="VALUEERROR")
+    assert minimal.message == "oops"
+    assert minimal.code == "VALUEERROR"
+    assert minimal.context == {}
 
 
 def test_structured_error_protocol_satisfied():
@@ -23,10 +23,18 @@ def test_structured_error_protocol_satisfied():
         def context(self) -> dict:
             return {"key": "value"}
 
-    e = MyError("bad thing")
-    assert isinstance(e, StructuredError)
+    assert isinstance(MyError("bad thing"), StructuredError)
+
+
+def test_partial_structured_error_does_not_satisfy_protocol():
+    class PartialError(Exception):
+        @property
+        def error_code(self) -> str:
+            return "PARTIAL_001"
+        # missing context property
+
+    assert not isinstance(PartialError("partial"), StructuredError)
 
 
 def test_plain_exception_does_not_satisfy_protocol():
-    e = ValueError("plain")
-    assert not isinstance(e, StructuredError)
+    assert not isinstance(ValueError("plain"), StructuredError)

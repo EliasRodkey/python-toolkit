@@ -190,7 +190,47 @@ def test_no_exception_types_raises_type_error():
             return 1
 
 
+# --- None return ---
+
+def test_sync_none_return_wrapped_in_ok():
+    @catch(ValueError)
+    def fn():
+        return None
+
+    result = fn()
+    assert isinstance(result, Ok)
+    assert result.value is None
+
+
+# --- Multiple exception types ---
+
+def test_catch_multiple_exception_types():
+    @catch(ValueError, TypeError)
+    def fn(exc):
+        raise exc
+
+    result_value = fn(ValueError("value err"))
+    assert isinstance(result_value, Err)
+    assert result_value.error.code == "VALUEERROR"
+
+    result_type = fn(TypeError("type err"))
+    assert isinstance(result_type, Err)
+    assert result_type.error.code == "TYPEERROR"
+
+
 # --- Logger parameter ---
+
+def test_default_logger_logs_on_exception(caplog):
+    @catch(ValueError)
+    def fn():
+        raise ValueError("default logger error")
+
+    with caplog.at_level(logging.ERROR, logger="pleasant_errors"):
+        result = fn()
+
+    assert isinstance(result, Err)
+    assert "default logger error" in caplog.text
+
 
 def test_custom_logger_is_called_on_exception(caplog):
     custom_logger = logging.getLogger("test_custom")
