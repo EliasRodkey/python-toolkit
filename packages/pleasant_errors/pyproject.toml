@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pleasant-errors"
-version = "0.1.0"
+version = "1.0.0"
 description = "Structured error handling, Result types, and catch decorator for python-toolkit"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 readme = "README.md"
