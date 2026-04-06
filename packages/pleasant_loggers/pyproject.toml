@@ -4,16 +4,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pleasant-loggers"
-version = "1.5.5"
+version = "2.0.0"
 description = "robust and generic logging system for Python"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 readme = "README.md"
 license = {text = "MIT"}
-dependencies = []
+dependencies = [
+    "structlog>=24.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
 exclude = ["tests*", "test*"]
 
 [project.optional-dependencies]
+analysis = ["pandas>=2.0"]
 dev = ["pytest"]
+
+[project.scripts]
+pleasant-logs = "pleasant_loggers._analysis:cli_main"
