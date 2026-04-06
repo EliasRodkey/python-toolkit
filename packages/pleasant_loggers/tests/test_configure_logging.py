@@ -1,345 +1,318 @@
 """
-loggers.tests.test_logger_configs.py
+tests.test_configure_logging
 
-Unit test for logger_configs.py using pytest
+Integration tests for configure_logging(): all 5 built-in modes, fine-grained
+overrides, second-call RuntimeError, structlog processor chain wiring, and
+actual file creation/content.
 """
-
+import dataclasses
 import json
 import logging
-from logging.handlers import TimedRotatingFileHandler
-import pytest
 import os
 
-from pleasant_loggers.configure_logging import configure_logging
-from pleasant_loggers.handler_controller import HandlerController
-from pleasant_loggers.utils import LoggingMode, clear_logs
+import pytest
+import structlog
+
+from pleasant_loggers._config import configure_logging
+from pleasant_loggers._handlers import HandlerController
+from pleasant_loggers._modes import (
+    BASIC_SINGLE_FILE,
+    BASIC_JSON_FILE,
+    DIRECTORY_PER_RUN,
+    DAILY_DIRECTORY,
+    BASIC_ROTATING_HANDLER,
+    LoggingMode,
+    DirectoryLayout,
+)
+from pleasant_loggers._utils import clear_logs
 
 
-@pytest.fixture()
-def test_handler():
-    """Fixture to create fresh log file structure before each test"""
-    
-    try:
-        # Setup: create log folders and files and configure logger, register log messages
-        handler_controller = configure_logging(mode=LoggingMode.DIRECTORY_PER_RUN)
-        logger = logging.getLogger(__name__)
+# ---------------------------------------------------------------------------
+# Fixtures / teardown
+# ---------------------------------------------------------------------------
 
-        logger.debug("Something is happening behind the scenes...")
-        logger.info("This message contains some extra information", extra={"var_1" : True, "var_2" : "ERROR"})
-        logger.performance("FUNCTION PERFORMANCE")
-        logger.warning("Oopsy daisy! don't do that again :(")
-        logger.error("ERROR skjdbvwibuyfi8whf209[3r8h9weuvb]")
-        logger.critical("SHUTTING DOWN BEEP BOOP")
-        try:
-            new_num = 6 / 0
-        except Exception as e:
-            logger.exception("Failed tricky thingy!", extra={"func_status": "FAIL"})
-
-        yield handler_controller
-
-    except Exception as e:
-        print(e)
-        raise
-
-    finally:
-        # Teardown: Ensure the session is closed and the files are deleted
-        for name in handler_controller.handler_names():
-            handler_controller.get_handler(name).flush()
-            handler_controller.get_handler(name).close()
-        logging.getLogger().handlers.clear()
-        logger.handlers.clear()
-
-        handler_controller._reset()
-        clear_logs()
-
-
-def test_configure_logging(test_handler):
-    """Test class from LoggingHandlerController"""
-    log_controller = test_handler
-    root_logger = logging.getLogger()
-    module_logger = logging.getLogger(__name__)
-    rando_logger = logging.getLogger("poop")
-
-    loggers = [root_logger, module_logger, rando_logger]
-
-    module_message = "THIS IS A TEST OF THE MODULE LOGGER OUTPUT"
-    rando_message = "THIS IS A TEST OF THE POOP LOGGER OUTPUT"
-    module_logger.warning(module_message)
-    rando_logger.error(rando_message)
-     
-    for name, handler in log_controller.handlers.items():
-        assert handler in root_logger.handlers
-    
-    with open(log_controller.get_handler("main").baseFilename, "r") as f:
-        lines = [line for line in f]
-    
-    module_captured = False
-    rando_captured = False
-    for line in lines:
-        if line.endswith(f"{module_message}\n"):
-            module_captured = True
-        elif line.endswith(f"{rando_message}\n"):
-            rando_captured = True
-    
-    assert module_captured and rando_captured
-
-
-def test_json_log_file_creation(test_handler):
-    """Makes sure the JSON log file is created and formatted correctly"""
-    log_controller = test_handler
-
-    with open(log_controller.json_file_path, "r") as file:
-        data = [json.loads(line) for line in file if line.strip()]
-
-    assert len(data) == 7
-    
-    for entry in data:
-        assert "timestamp" in entry, "missing log entry info"
-        assert "level" in entry, "missing log entry info"
-        assert "logger" in entry, "missing log entry info"
-        assert "message" in entry, "missing log entry info"
-        assert "module" in entry, "missing log entry info"
-        assert "function" in entry, "missing log entry info"
-        assert "line" in entry, "missing log entry info"
-        assert "exception" in entry, "missing log entry info"
-        assert "extra" in entry, "missing log entry info"
-
-
-def test_add_new_run_name_logger(test_handler):
-    """Adds a new logger and run name. Should create a new readable log file and log messages should also go to existing json file"""
-    log_controller = test_handler
-
-    # Create and configure a new logger with a different run name
-    logger_2 = logging.getLogger("test_logger_2")
-    log_controller.add_file_handler("thread_2")
-
-    logger_2.debug("Debug message")
-    logger_2.performance("Thread 2 performance information", extra={"step": "time delta"})
-    logger_2.info("Info message")
-    logger_2.warning("Warning message")
-    logger_2.error("Error message")
-    logger_2.critical("Critical!!!")
-
-    # Check that the new readable log file was created and is accessible from the original log controller obj
-    readable_file_path_2 = log_controller.get_handler("thread_2").baseFilename
-    assert os.path.exists(readable_file_path_2)
-
-    # Ensure logs from logger_2 are not in logger readable log file
-    with open(log_controller.get_handler("main").baseFilename, "r") as file:
-        readable_data = [line for line in file if line.strip()]
-    for line in readable_data:
-        assert "thread_2" not in line
-
-    # Ensure logs from original logger are not in logger_2 readable log file
-    with open(readable_file_path_2, "r") as file:
-        readable_data_2 = [line for line in file if line.strip()]
-    for line in readable_data_2:
-        assert __name__ not in line
-    
-    # Ensure logs from both loggers are in the json file
-    with open(log_controller.json_file_path, "r") as file:
-        json_data = [json.loads(line) for line in file if line.strip()]
-    for line in json_data:
-        if line["logger"] == "test_logger_2":
-            assert line["message"] in [
-                "Debug message",
-                "Thread 2 performance information",
-                "Info message",
-                "Warning message",
-                "Error message",
-                "Critical!!!"
-            ]
-        else:
-            assert line["message"] in [
-                "Something is happening behind the scenes...",
-                "This message contains some extra information",
-                "FUNCTION PERFORMANCE",
-                "Oopsy daisy! don't do that again :(",
-                "ERROR skjdbvwibuyfi8whf209[3r8h9weuvb]",
-                "SHUTTING DOWN BEEP BOOP",
-                "Failed tricky thingy!"
-            ]
-
-
-@pytest.fixture()
-def test_mode_test(tmp_path):
-    """Fixture for DAILY_DIRECTORY mode using an isolated temp directory."""
-    handler_controller = configure_logging(log_directory=str(tmp_path), mode=LoggingMode.DAILY_DIRECTORY)
-    yield handler_controller
-    root_logger = logging.getLogger()
-    root_logger.handlers.clear()
-    handler_controller._reset()
-
-
-@pytest.fixture()
-def test_mode_production(tmp_path):
-    """Fixture for BASIC_ROTATING_HANDLER mode using an isolated temp directory."""
-    handler_controller = configure_logging(log_directory=str(tmp_path), mode=LoggingMode.BASIC_ROTATING_HANDLER)
-    yield handler_controller
-    root_logger = logging.getLogger()
-    root_logger.handlers.clear()
-    handler_controller._reset()
-
-
-@pytest.fixture()
-def test_mode_rotating_override(tmp_path):
-    """Fixture to test rotating=True override on a non-rotating mode."""
-    handler_controller = configure_logging(
-        log_directory=str(tmp_path),
-        mode=LoggingMode.DIRECTORY_PER_RUN,
-        rotating=True,
-    )
-    yield handler_controller
-    root_logger = logging.getLogger()
-    root_logger.handlers.clear()
-    handler_controller._reset()
-
-
-def test_test_mode_no_stream_handler(test_mode_test):
-    """DAILY_DIRECTORY mode should not create a stream handler on the controller."""
-    assert test_mode_test.stream_handler is None
-    assert "stream" not in test_mode_test.handlers
-
-
-def test_test_mode_daily_folder(test_mode_test):
-    """DAILY_DIRECTORY mode run_directory should be a daily folder (no per-run subfolder)."""
-    lc = test_mode_test
-    folder_name = os.path.basename(lc.run_directory)
-    assert len(folder_name) == 10  # YYYY-MM-DD
-    assert folder_name.count("-") == 2
-
-
-def test_production_mode_stream_handler_at_warning(test_mode_production):
-    """BASIC_ROTATING_HANDLER mode stream handler should be at WARNING level."""
-    lc = test_mode_production
-    assert lc.stream_handler is not None
-    assert lc.stream_handler.level == logging.WARNING
-
-
-def test_production_mode_timed_rotating_json_handler(test_mode_production):
-    """BASIC_ROTATING_HANDLER mode should use TimedRotatingFileHandler for the JSON log."""
-    lc = test_mode_production
-    assert isinstance(lc.json_file_handler, TimedRotatingFileHandler)
-
-
-def test_rotating_override_uses_timed_rotating_handler(test_mode_rotating_override):
-    """rotating=True should use TimedRotatingFileHandler regardless of mode."""
-    lc = test_mode_rotating_override
-    assert isinstance(lc.json_file_handler, TimedRotatingFileHandler)
-
-
-@pytest.fixture()
-def test_mode_basic_single_file(tmp_path):
-    """Fixture for BASIC_SINGLE_FILE mode using an isolated temp directory."""
-    handler_controller = configure_logging(log_directory=str(tmp_path), mode=LoggingMode.BASIC_SINGLE_FILE)
-    yield handler_controller
+@pytest.fixture(autouse=True)
+def reset_between_tests():
+    """Reset HandlerController and structlog before and after every test."""
+    HandlerController._reset()
+    structlog.reset_defaults()
     logging.getLogger().handlers.clear()
-    handler_controller._reset()
-
-
-def test_basic_single_file_flat_directory(test_mode_basic_single_file, tmp_path):
-    """BASIC_SINGLE_FILE mode run_directory should be the flat log_directory with no date subfolder."""
-    lc = test_mode_basic_single_file
-    assert os.path.normpath(lc.run_directory) == os.path.normpath(str(tmp_path))
-
-
-def test_basic_single_file_no_json_handler(test_mode_basic_single_file):
-    """BASIC_SINGLE_FILE mode should not create a JSON handler (json=False default)."""
-    lc = test_mode_basic_single_file
-    assert lc.json_file_handler is None
-    assert "json" not in lc.handler_names()
-
-
-def test_basic_single_file_has_main_and_stream(test_mode_basic_single_file):
-    """BASIC_SINGLE_FILE mode should have both 'main' and 'stream' handlers."""
-    lc = test_mode_basic_single_file
-    assert "main" in lc.handler_names()
-    assert "stream" in lc.handler_names()
-
-
-def test_basic_single_file_stream_level_is_info(test_mode_basic_single_file):
-    """BASIC_SINGLE_FILE mode stream handler should be at INFO level."""
-    lc = test_mode_basic_single_file
-    assert lc.stream_handler is not None
-    assert lc.stream_handler.level == logging.INFO
+    yield
+    HandlerController._reset()
+    structlog.reset_defaults()
+    logging.getLogger().handlers.clear()
 
 
 @pytest.fixture()
-def test_mode_basic_json_file(tmp_path):
-    """Fixture for BASIC_JSON_FILE mode using an isolated temp directory."""
-    handler_controller = configure_logging(log_directory=str(tmp_path), mode=LoggingMode.BASIC_JSON_FILE)
-    yield handler_controller
-    logging.getLogger().handlers.clear()
-    handler_controller._reset()
+def lc_per_run(tmp_path):
+    lc = configure_logging(log_directory=str(tmp_path), mode=DIRECTORY_PER_RUN)
+    logger = logging.getLogger(__name__)
+    logger.info("test info message", extra={"tag": "fixture"})
+    logger.debug("test debug message")
+    logger.warning("test warning message")
+    return lc
 
 
-def test_basic_json_file_flat_directory(test_mode_basic_json_file, tmp_path):
-    """BASIC_JSON_FILE mode run_directory should be the flat log_directory with no date subfolder."""
-    lc = test_mode_basic_json_file
-    assert os.path.normpath(lc.run_directory) == os.path.normpath(str(tmp_path))
+@pytest.fixture()
+def lc_daily(tmp_path):
+    return configure_logging(log_directory=str(tmp_path), mode=DAILY_DIRECTORY)
 
 
-def test_basic_json_file_no_main_handler(test_mode_basic_json_file):
-    """BASIC_JSON_FILE mode should not create a 'main' text file handler (file=False default)."""
-    lc = test_mode_basic_json_file
-    assert "main" not in lc.handler_names()
+@pytest.fixture()
+def lc_basic_single(tmp_path):
+    return configure_logging(log_directory=str(tmp_path), mode=BASIC_SINGLE_FILE)
 
 
-def test_basic_json_file_has_json_and_stream(test_mode_basic_json_file):
-    """BASIC_JSON_FILE mode should have both 'json' and 'stream' handlers."""
-    lc = test_mode_basic_json_file
-    assert "json" in lc.handler_names()
-    assert "stream" in lc.handler_names()
+@pytest.fixture()
+def lc_basic_json(tmp_path):
+    return configure_logging(log_directory=str(tmp_path), mode=BASIC_JSON_FILE)
 
 
-def test_basic_json_file_json_file_exists(test_mode_basic_json_file):
-    """BASIC_JSON_FILE mode should create the JSON log file on disk."""
-    lc = test_mode_basic_json_file
-    assert os.path.exists(lc.json_file_path)
+@pytest.fixture()
+def lc_rotating(tmp_path):
+    return configure_logging(log_directory=str(tmp_path), mode=BASIC_ROTATING_HANDLER)
 
 
-def test_stream_false_override_directory_per_run(tmp_path):
-    """Explicitly passing stream=False on DIRECTORY_PER_RUN should suppress the stream handler."""
-    lc = configure_logging(log_directory=str(tmp_path), mode=LoggingMode.DIRECTORY_PER_RUN, stream=False)
-    try:
+# ---------------------------------------------------------------------------
+# Returns HandlerController
+# ---------------------------------------------------------------------------
+
+class TestReturnValue:
+
+    def test_returns_handler_controller(self, tmp_path):
+        lc = configure_logging(log_directory=str(tmp_path), mode=BASIC_SINGLE_FILE)
+        assert isinstance(lc, HandlerController)
+
+
+# ---------------------------------------------------------------------------
+# Second call raises RuntimeError
+# ---------------------------------------------------------------------------
+
+class TestSecondCallRaises:
+
+    def test_second_call_raises_runtime_error(self, tmp_path):
+        configure_logging(log_directory=str(tmp_path), mode=BASIC_SINGLE_FILE)
+        with pytest.raises(RuntimeError, match="configure_logging"):
+            configure_logging(log_directory=str(tmp_path), mode=BASIC_SINGLE_FILE)
+
+
+# ---------------------------------------------------------------------------
+# validate() is called
+# ---------------------------------------------------------------------------
+
+class TestValidation:
+
+    def test_invalid_mode_raises_value_error(self, tmp_path):
+        bad_mode = LoggingMode(
+            stream=False, stream_level=logging.INFO,
+            file=False, file_level=logging.DEBUG,
+            json=False, json_level=logging.DEBUG,
+            directory_layout=DirectoryLayout.FLAT,
+        )
+        with pytest.raises(ValueError):
+            configure_logging(log_directory=str(tmp_path), mode=bad_mode)
+
+
+# ---------------------------------------------------------------------------
+# Root logger is configured
+# ---------------------------------------------------------------------------
+
+class TestRootLoggerHandlers:
+
+    def test_root_logger_has_handlers_after_configure(self, lc_per_run):
+        root = logging.getLogger()
+        assert len(root.handlers) > 0
+
+    def test_root_logger_level_is_debug(self, lc_per_run):
+        assert logging.getLogger().level == logging.DEBUG
+
+
+# ---------------------------------------------------------------------------
+# JSON log output — flat NDJSON with correct fields
+# ---------------------------------------------------------------------------
+
+class TestJsonOutput:
+
+    def test_json_file_created(self, lc_per_run):
+        assert os.path.exists(lc_per_run.json_file_path)
+
+    def test_json_records_are_flat_ndjson(self, lc_per_run):
+        """Every line in the JSON log must be a valid flat JSON object."""
+        with open(lc_per_run.json_file_path, encoding="utf-8") as f:
+            lines = [l.strip() for l in f if l.strip()]
+        assert len(lines) > 0
+        for line in lines:
+            record = json.loads(line)
+            assert isinstance(record, dict)
+
+    def test_json_records_have_required_fields(self, lc_per_run):
+        with open(lc_per_run.json_file_path, encoding="utf-8") as f:
+            records = [json.loads(l) for l in f if l.strip()]
+        required = {"timestamp", "level", "event", "logger", "func_name", "module", "lineno"}
+        for record in records:
+            for field in required:
+                assert field in record, f"Missing field {field!r} in record: {record}"
+
+    def test_json_records_no_nested_extra(self, lc_per_run):
+        """v2 output must be flat — no 'extra' key, no 'message' key."""
+        with open(lc_per_run.json_file_path, encoding="utf-8") as f:
+            records = [json.loads(l) for l in f if l.strip()]
+        for record in records:
+            assert "extra" not in record
+            assert "message" not in record
+
+    def test_extra_dict_flattened_into_record(self, lc_per_run):
+        """extra={'tag': 'fixture'} should appear as top-level 'tag' field."""
+        with open(lc_per_run.json_file_path, encoding="utf-8") as f:
+            records = [json.loads(l) for l in f if l.strip()]
+        tagged = [r for r in records if r.get("tag") == "fixture"]
+        assert len(tagged) >= 1
+
+    def test_timestamp_is_iso_format(self, lc_per_run):
+        with open(lc_per_run.json_file_path, encoding="utf-8") as f:
+            records = [json.loads(l) for l in f if l.strip()]
+        from datetime import datetime
+        for record in records:
+            ts = record["timestamp"]
+            # Should parse without error
+            datetime.fromisoformat(ts.replace("Z", "+00:00"))
+
+
+# ---------------------------------------------------------------------------
+# Fine-grained overrides (dataclasses.replace)
+# ---------------------------------------------------------------------------
+
+class TestOverrides:
+
+    def test_stream_false_suppresses_stream_handler(self, tmp_path):
+        lc = configure_logging(log_directory=str(tmp_path), mode=DIRECTORY_PER_RUN, stream=False)
         assert lc.stream_handler is None
-        assert "stream" not in lc.handler_names()
-    finally:
-        logging.getLogger().handlers.clear()
-        lc._reset()
 
-
-def test_stream_true_override_daily_directory(tmp_path):
-    """Explicitly passing stream=True on DAILY_DIRECTORY (default off) should add a stream handler."""
-    lc = configure_logging(log_directory=str(tmp_path), mode=LoggingMode.DAILY_DIRECTORY, stream=True)
-    try:
+    def test_stream_true_on_daily_directory(self, tmp_path):
+        lc = configure_logging(log_directory=str(tmp_path), mode=DAILY_DIRECTORY, stream=True)
         assert lc.stream_handler is not None
-        assert "stream" in lc.handler_names()
-    finally:
-        logging.getLogger().handlers.clear()
-        lc._reset()
 
-
-def test_file_level_override(tmp_path):
-    """Explicitly passing file_level should set the main handler's level."""
-    lc = configure_logging(
-        log_directory=str(tmp_path),
-        mode=LoggingMode.DIRECTORY_PER_RUN,
-        file_level=logging.WARNING,
-    )
-    try:
-        assert lc.get_handler("main").level == logging.WARNING
-    finally:
-        logging.getLogger().handlers.clear()
-        lc._reset()
-
-
-def test_json_false_override_directory_per_run(tmp_path):
-    """Explicitly passing json=False on DIRECTORY_PER_RUN should suppress the JSON handler."""
-    lc = configure_logging(log_directory=str(tmp_path), mode=LoggingMode.DIRECTORY_PER_RUN, json=False)
-    try:
+    def test_json_false_suppresses_json_handler(self, tmp_path):
+        lc = configure_logging(log_directory=str(tmp_path), mode=DIRECTORY_PER_RUN, json=False)
         assert lc.json_file_handler is None
-        assert "json" not in lc.handler_names()
-    finally:
-        logging.getLogger().handlers.clear()
-        lc._reset()
+
+    def test_file_false_suppresses_readable_handler(self, tmp_path):
+        lc = configure_logging(log_directory=str(tmp_path), mode=DIRECTORY_PER_RUN, file=False)
+        assert lc.readable_file_handler is None
+
+    def test_stream_level_override(self, tmp_path):
+        lc = configure_logging(
+            log_directory=str(tmp_path), mode=DIRECTORY_PER_RUN,
+            stream_level=logging.WARNING
+        )
+        assert lc.stream_handler.level == logging.WARNING
+
+    def test_file_level_override(self, tmp_path):
+        lc = configure_logging(
+            log_directory=str(tmp_path), mode=DIRECTORY_PER_RUN,
+            file_level=logging.WARNING
+        )
+        assert lc.readable_file_handler.level == logging.WARNING
+
+    def test_json_level_override(self, tmp_path):
+        lc = configure_logging(
+            log_directory=str(tmp_path), mode=DIRECTORY_PER_RUN,
+            json_level=logging.WARNING
+        )
+        assert lc.json_file_handler.level == logging.WARNING
+
+    def test_built_in_mode_instances_not_mutated(self, tmp_path):
+        """dataclasses.replace() must not mutate the built-in mode instance."""
+        original_stream = DIRECTORY_PER_RUN.stream
+        configure_logging(log_directory=str(tmp_path), mode=DIRECTORY_PER_RUN, stream=False)
+        assert DIRECTORY_PER_RUN.stream == original_stream
+
+
+# ---------------------------------------------------------------------------
+# BASIC_SINGLE_FILE mode
+# ---------------------------------------------------------------------------
+
+class TestBasicSingleFile:
+
+    def test_flat_directory(self, lc_basic_single, tmp_path):
+        assert os.path.normpath(lc_basic_single.run_directory) == os.path.normpath(str(tmp_path))
+
+    def test_no_json_handler(self, lc_basic_single):
+        assert lc_basic_single.json_file_handler is None
+
+    def test_has_stream_and_readable(self, lc_basic_single):
+        assert lc_basic_single.stream_handler is not None
+        assert lc_basic_single.readable_file_handler is not None
+
+    def test_stream_level_is_info(self, lc_basic_single):
+        assert lc_basic_single.stream_handler.level == logging.INFO
+
+
+# ---------------------------------------------------------------------------
+# BASIC_JSON_FILE mode
+# ---------------------------------------------------------------------------
+
+class TestBasicJsonFile:
+
+    def test_flat_directory(self, lc_basic_json, tmp_path):
+        assert os.path.normpath(lc_basic_json.run_directory) == os.path.normpath(str(tmp_path))
+
+    def test_no_readable_handler(self, lc_basic_json):
+        assert lc_basic_json.readable_file_handler is None
+
+    def test_has_json_and_stream(self, lc_basic_json):
+        assert lc_basic_json.json_file_handler is not None
+        assert lc_basic_json.stream_handler is not None
+
+    def test_json_file_exists(self, lc_basic_json):
+        assert os.path.exists(lc_basic_json.json_file_path)
+
+
+# ---------------------------------------------------------------------------
+# DAILY_DIRECTORY mode
+# ---------------------------------------------------------------------------
+
+class TestDailyDirectory:
+
+    def test_no_stream_handler(self, lc_daily):
+        assert lc_daily.stream_handler is None
+
+    def test_daily_folder_structure(self, lc_daily, tmp_path):
+        folder_name = os.path.basename(lc_daily.run_directory)
+        assert len(folder_name) == 10
+        assert folder_name.count("-") == 2
+
+
+# ---------------------------------------------------------------------------
+# DIRECTORY_PER_RUN mode
+# ---------------------------------------------------------------------------
+
+class TestDirectoryPerRun:
+
+    def test_nested_run_directory(self, lc_per_run, tmp_path):
+        parts = os.path.relpath(lc_per_run.run_directory, str(tmp_path)).split(os.sep)
+        assert len(parts) == 2
+
+    def test_has_all_handlers(self, lc_per_run):
+        assert lc_per_run.json_file_handler is not None
+        assert lc_per_run.readable_file_handler is not None
+        assert lc_per_run.stream_handler is not None
+
+
+# ---------------------------------------------------------------------------
+# BASIC_ROTATING_HANDLER mode
+# ---------------------------------------------------------------------------
+
+class TestBasicRotatingHandler:
+    from logging.handlers import TimedRotatingFileHandler
+
+    def test_timed_rotating_json_handler(self, lc_rotating):
+        from logging.handlers import TimedRotatingFileHandler
+        assert isinstance(lc_rotating.json_file_handler, TimedRotatingFileHandler)
+
+    def test_stream_level_is_warning(self, lc_rotating):
+        assert lc_rotating.stream_handler.level == logging.WARNING
+
+    def test_flat_directory(self, lc_rotating, tmp_path):
+        assert os.path.normpath(lc_rotating.run_directory) == os.path.normpath(str(tmp_path))
+
