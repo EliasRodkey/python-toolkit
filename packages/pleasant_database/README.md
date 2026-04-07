@@ -68,10 +68,10 @@ __table_args__ = (
 The DatabaseFile object represents the actual file of the database and is required to initialize a DatabaseManager object.
 
 ```python
-file = DatabaseFile(db_name, directory="data/dbs")
+file = DatabaseFile(db_name, directory="data/database")
 
 db_name: valid .db filename
-directory: relative path to database directory (default data//dbs)
+directory: relative path to database directory (default data//database)
 ```
 
 DatabaseFile funcitons:

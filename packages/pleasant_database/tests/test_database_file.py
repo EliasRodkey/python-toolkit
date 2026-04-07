@@ -23,14 +23,12 @@ Functions:
 import sys
 sys.path.insert(0, ".")
 
-
 # Standard library imports
 import os
 
 # local imports
 from pleasant_database import DEFAULT_DB_DIRECTORY
 from pleasant_database.database_file import DatabaseFile
-
 
 
 # Constants
@@ -81,7 +79,7 @@ class TestDatabaseFile:
 
 
     def test_move_database_custom_1(self):
-        """Tests the DatabaseFile.move() function from db_file_handler by moving a file from the cwd to the .\\data\\dbs dir"""
+        """Tests the DatabaseFile.move() function from db_file_handler by moving a file from the cwd to the .\\data\\database dir"""
         # Create db file in the cwd location
         test_db = DatabaseFile(TEST_DB, directory=os.curdir)
         test_db.create()

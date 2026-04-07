@@ -107,6 +107,10 @@ class BaseTable(Base):
         return self.get_column_sqla_types()
 
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(name={self.__tablename__})"
+
+
 
 class DatabaseIntegrityError(Exception):
     def __init__(self, orig: Exception, table: "BaseTable"):
