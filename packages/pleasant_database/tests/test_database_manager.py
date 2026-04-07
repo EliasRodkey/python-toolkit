@@ -693,3 +693,70 @@ class TestQuery:
         """query(columns=[]) raises ValueError."""
         with pytest.raises(ValueError):
             clean_database.query(columns=[])
+
+    def test_query_filter_equality(self, clean_database):
+        """filters={"age": 30} returns 2 matching rows."""
+        clean_database.add_item(**TEST_ENTRY_1)  # age 30
+        clean_database.add_item(**TEST_ENTRY_2)  # age 25
+        clean_database.add_item(**TEST_ENTRY_3)  # age 30
+
+        result = clean_database.query(filters={"age": 30})
+
+        assert len(result) == 2
+
+    def test_query_filter_operator(self, clean_database):
+        """filters with > operator returns matching rows."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        result = clean_database.query(filters={"age": (">", 25)})
+
+        assert len(result) == 2
+        assert all(result["age"] > 25)
+
+    def test_query_filter_between(self, clean_database):
+        """between operator returns only rows in range."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        result = clean_database.query(filters={"age": ("between", (24, 29))})
+
+        assert len(result) == 1
+        assert result.iloc[0]["name"] == TEST_ENTRY_2["name"]
+
+    def test_query_filter_list_of_tuples(self, clean_database):
+        """list of tuples applies multiple constraints on one column."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        result = clean_database.query(filters={"age": [(">=", 25), ("<=", 30)]})
+
+        assert len(result) == 3
+
+    def test_query_filter_no_matches(self, clean_database):
+        """Non-matching filter returns empty DataFrame."""
+        clean_database.add_item(**TEST_ENTRY_1)
+
+        result = clean_database.query(filters={"age": 999})
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 0
+
+    def test_query_filter_invalid_column_raises(self, clean_database):
+        """filters with a non-existent column raises AttributeError (from _build_filter_clauses)."""
+        with pytest.raises(AttributeError):
+            clean_database.query(filters={"bad_col": "x"})
+
+    def test_query_filter_with_column_selection(self, clean_database):
+        """Column selection and filtering can be combined."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        result = clean_database.query(columns=["name"], filters={"age": 30})
+
+        assert list(result.columns) == ["name"]
+        assert len(result) == 2
