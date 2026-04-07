@@ -631,3 +631,28 @@ class TestDatetimeFiltering:
 
         assert len(results) == 1
         assert results[0].name == "Mimi"
+
+
+class TestQuery:
+    """Tests the query() method of DatabaseManager."""
+
+    # --- Slice 1: bare query() ---
+
+    def test_query_all_columns_returns_dataframe(self, clean_database):
+        """query() with no args returns a DataFrame containing all rows and columns."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        result = clean_database.query()
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 3
+        assert set(["id", "name", "age", "email"]).issubset(set(result.columns))
+
+    def test_query_empty_table_returns_empty_dataframe(self, clean_database):
+        """query() on an empty table returns an empty DataFrame (not raises)."""
+        result = clean_database.query()
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 0
