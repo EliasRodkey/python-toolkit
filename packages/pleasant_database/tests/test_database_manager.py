@@ -656,3 +656,40 @@ class TestQuery:
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 0
+
+    def test_query_specific_columns_subset(self, clean_database):
+        """query(columns=[...]) returns only the requested columns."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+
+        result = clean_database.query(columns=["name", "age"])
+
+        assert list(result.columns) == ["name", "age"]
+        assert len(result) == 2
+
+    def test_query_single_column(self, clean_database):
+        """query(columns=['email']) returns a single-column DataFrame."""
+        clean_database.add_item(**TEST_ENTRY_1)
+
+        result = clean_database.query(columns=["email"])
+
+        assert list(result.columns) == ["email"]
+        assert result.iloc[0]["email"] == TEST_ENTRY_1["email"]
+
+    def test_query_empty_table_specific_columns_preserves_column_names(self, clean_database):
+        """query(columns=[...]) on empty table returns empty DataFrame with correct columns."""
+        result = clean_database.query(columns=["name"])
+
+        assert isinstance(result, pd.DataFrame)
+        assert list(result.columns) == ["name"]
+        assert len(result) == 0
+
+    def test_query_invalid_column_raises(self, clean_database):
+        """query(columns=['nonexistent']) raises ValueError."""
+        with pytest.raises(ValueError, match="nonexistent"):
+            clean_database.query(columns=["nonexistent"])
+
+    def test_query_empty_columns_list_raises(self, clean_database):
+        """query(columns=[]) raises ValueError."""
+        with pytest.raises(ValueError):
+            clean_database.query(columns=[])
