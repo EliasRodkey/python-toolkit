@@ -141,6 +141,50 @@ class TestDatabaseFile:
     def test_delete_db_not_exist(self):
         """Tests the DatabaseFile.delete() function from db_file_handler by trying to delete a file that hasn"t been created yet"""
         test_db = DatabaseFile(FAKE_DB)
-        
+
         test_db.delete()
         assert not os.path.exists(test_db.abspath)
+
+
+    def test_init_invalid_name_raises(self):
+        """Tests that DatabaseFile raises ValueError when given a non-.db filename"""
+        import pytest
+        with pytest.raises(ValueError):
+            DatabaseFile("notadb.txt")
+
+
+    def test_exists_true(self):
+        """Tests that exists() returns True when the file has been created"""
+        test_db = DatabaseFile(TEST_DB)
+        test_db.create()
+        assert test_db.exists() is True
+        test_db.delete()
+
+
+    def test_exists_false(self):
+        """Tests that exists() returns False when the file has not been created"""
+        test_db = DatabaseFile(FAKE_DB)
+        assert test_db.exists() is False
+
+
+    def test_create_idempotent(self):
+        """Tests that calling create() twice does not raise and the file is still present"""
+        test_db = DatabaseFile(TEST_DB)
+        test_db.create()
+        test_db.create()  # second call — should be a no-op
+        assert os.path.exists(test_db.abspath)
+        test_db.delete()
+
+
+    def test_move_source_not_exist(self):
+        """Tests that move() silently does nothing when the source file does not exist"""
+        test_db = DatabaseFile("ghost.db")
+        original_directory = test_db.directory
+        original_abspath = test_db.abspath
+
+        test_db.move("data")
+
+        # Attributes must be unchanged — the file was never moved
+        assert test_db.directory == original_directory
+        assert test_db.abspath == original_abspath
+        assert not os.path.exists(os.path.join("data", "ghost.db"))

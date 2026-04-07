@@ -397,7 +397,7 @@ class DatabaseManager():
                                         })
         ## Check to make sure the dictionary keys match the database table columns
         if self._dict_columns_match(kwargs):
-            
+
             # Locate the item in the database using its ID
             item = self.session.query(self.table_class).filter_by(id=item_id).first()
 
@@ -407,6 +407,8 @@ class DatabaseManager():
                 for key, value in kwargs.items():
                     if hasattr(item, key): # Check if the attribute exists in the item
                         setattr(item, key, value)
+            else:
+                raise ItemNotFoundError(item_id, self.table_class)
 
         try:
             self.session.flush() # Detects if the item already exists in the database
@@ -439,14 +441,15 @@ class DatabaseManager():
             self.session.delete(item)
             self.session.commit()
             logger.info(f"Item deleted from database with ID: {item_id}.", extra={
-                                                                            LoggingExtras.TABLE_NAME: self.table_name, 
+                                                                            LoggingExtras.TABLE_NAME: self.table_name,
                                                                             LoggingExtras.ITEM_ID: item_id
                                                                         })
         else:
             logger.warning(f"Item not found in database with ID: {item_id}.", extra={
-                                                                            LoggingExtras.TABLE_NAME: self.table_name, 
+                                                                            LoggingExtras.TABLE_NAME: self.table_name,
                                                                             LoggingExtras.ITEM_ID: item_id
                                                                         })
+            raise ItemNotFoundError(item_id, self.table_class)
 
     
     def delete_items_by_attribute(self, **kwargs):

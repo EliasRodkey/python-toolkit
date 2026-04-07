@@ -36,7 +36,7 @@ from pleasant_database.database_file import DatabaseFile
 from pleasant_database.database_manager import DatabaseManager
 from .mock_table_object import MockTableObject, DatetimeMockTableObject
 from .mock_table_object import TEST_ENTRY_1, TEST_ENTRY_2, TEST_ENTRY_3, INVALID_ENTRY, INVALID_DF
-from .mock_table_object import DATE_ENTRY_1, DATE_ENTRY_2, DATE_ENTRY_3
+from .mock_table_object import DATE_ENTRY_1, DATE_ENTRY_2, DATE_ENTRY_3, SWITCHED_DATE_ENTRY
 
 
 db_file = DatabaseFile("test.db")
@@ -556,6 +556,182 @@ class TestDatabaseManager:
         assert "ALPHA_UPPER" in names
 
 
+    # --- add_multiple_items ---
+
+    def test_add_multiple_items(self, clean_database):
+        """Tests that add_multiple_items() inserts all entries"""
+        clean_database.add_multiple_items([TEST_ENTRY_1, TEST_ENTRY_2, TEST_ENTRY_3])
+
+        assert clean_database.session.query(MockTableObject).count() == 3
+        names = {item.name for item in clean_database.fetch_all_items()}
+        assert names == {TEST_ENTRY_1["name"], TEST_ENTRY_2["name"], TEST_ENTRY_3["name"]}
+
+
+    # --- filter_items: additional operators ---
+
+    def test_filter_items_not_equal(self, clean_database):
+        """Tests the != operator in filter_items"""
+        clean_database.add_item(**TEST_ENTRY_1)  # age 30
+        clean_database.add_item(**TEST_ENTRY_2)  # age 25
+
+        results = clean_database.filter_items({"age": ("!=", 30)})
+
+        assert len(results) == 1
+        assert results[0].age == 25
+
+
+    def test_filter_items_in_operator(self, clean_database):
+        """Tests the 'in' operator in filter_items"""
+        clean_database.add_item(**TEST_ENTRY_1)  # John Doe
+        clean_database.add_item(**TEST_ENTRY_2)  # Jane Doe
+        clean_database.add_item(**TEST_ENTRY_3)  # Alice Smith
+
+        results = clean_database.filter_items({"name": ("in", ["John Doe", "Alice Smith"])})
+
+        assert len(results) == 2
+        names = {r.name for r in results}
+        assert names == {"John Doe", "Alice Smith"}
+
+
+    def test_filter_items_like_operator(self, clean_database):
+        """Tests the 'like' (case-sensitive LIKE) operator in filter_items"""
+        clean_database.add_item(**TEST_ENTRY_1)  # John Doe
+        clean_database.add_item(**TEST_ENTRY_2)  # Jane Doe
+        clean_database.add_item(**TEST_ENTRY_3)  # Alice Smith
+
+        results = clean_database.filter_items({"name": ("like", "%Doe")})
+
+        assert len(results) == 2
+        names = {r.name for r in results}
+        assert names == {"John Doe", "Jane Doe"}
+
+
+    # --- filter_items use_or=True ---
+
+    def test_filter_items_or_logic(self, clean_database):
+        """Tests that use_or=True returns rows matching ANY filter (OR), not ALL (AND)"""
+        clean_database.add_item(**TEST_ENTRY_1)  # John Doe, age 30
+        clean_database.add_item(**TEST_ENTRY_2)  # Jane Doe, age 25
+        clean_database.add_item(**TEST_ENTRY_3)  # Alice Smith, age 30
+
+        # OR: name == "John Doe" OR age == 25
+        # Matches John (name match) and Jane (age match); Alice matches neither
+        results = clean_database.filter_items({"name": "John Doe", "age": 25}, use_or=True)
+
+        assert len(results) == 2
+        names = {r.name for r in results}
+        assert "John Doe" in names
+        assert "Jane Doe" in names
+        assert "Alice Smith" not in names
+
+
+    # --- delete_items_by_filter use_or=True ---
+
+    def test_delete_items_by_filter_or_logic(self, clean_database):
+        """Tests that delete_items_by_filter(use_or=True) deletes rows matching ANY filter"""
+        clean_database.add_item(**TEST_ENTRY_1)  # John Doe, age 30
+        clean_database.add_item(**TEST_ENTRY_2)  # Jane Doe, age 25
+        clean_database.add_item(**TEST_ENTRY_3)  # Alice Smith, age 30
+
+        # OR: age <= 25 OR name == "Alice Smith"
+        # Deletes: Jane (age 25) and Alice (name match); John survives
+        clean_database.delete_items_by_filter({"age": ("<=", 25), "name": "Alice Smith"}, use_or=True)
+
+        assert clean_database.session.query(MockTableObject).count() == 1
+        assert clean_database.fetch_all_items()[0].name == "John Doe"
+
+
+    # --- fetch_all_items empty ---
+
+    def test_fetch_all_items_empty(self, clean_database):
+        """Tests that fetch_all_items() returns an empty list when the table has no rows"""
+        result = clean_database.fetch_all_items()
+        assert result == []
+
+
+    # --- fetch_items_by_attribute no matches ---
+
+    def test_fetch_items_by_attribute_no_matches(self, clean_database):
+        """Tests that fetch_items_by_attribute() returns an empty list when no rows match"""
+        clean_database.add_item(**TEST_ENTRY_1)
+        result = clean_database.fetch_items_by_attribute(name="ghost")
+        assert result == []
+
+
+    # --- update_item error paths ---
+
+    def test_update_item_not_found_raises(self, clean_database):
+        """Tests that update_item() raises ItemNotFoundError when the ID doesn't exist"""
+        with pytest.raises(ItemNotFoundError):
+            clean_database.update_item(999, name="nobody")
+
+
+    def test_update_item_duplicate_raises(self, clean_database):
+        """Tests that update_item() raises DatabaseIntegrityError on a UNIQUE violation"""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+
+        with pytest.raises(DatabaseIntegrityError) as exc_info:
+            clean_database.update_item(1, email=TEST_ENTRY_2["email"])
+
+        assert exc_info.value.column == "email"
+
+
+    # --- delete_item error path ---
+
+    def test_delete_item_not_found_raises(self, clean_database):
+        """Tests that delete_item() raises ItemNotFoundError when the ID doesn't exist"""
+        with pytest.raises(ItemNotFoundError):
+            clean_database.delete_item(999)
+
+
+    # --- append_dataframe duplicate ---
+
+    def test_append_dataframe_duplicate_raises(self, clean_database):
+        """
+        Tests that append_dataframe() raises an error on a UNIQUE violation.
+
+        Note: df.to_sql() executes before the session.flush() try/except block in
+        append_dataframe(), so the IntegrityError is caught by pandas and wrapped as
+        pd.errors.DatabaseError rather than our custom DatabaseIntegrityError.
+        """
+        clean_database.add_item(**TEST_ENTRY_1)
+
+        with pytest.raises(pd.errors.DatabaseError):
+            clean_database.append_dataframe(pd.DataFrame([TEST_ENTRY_1]))
+
+
+    # --- validation helpers: column mismatch ---
+
+    def test_df_columns_match_false_raises_value_error(self, clean_database):
+        """Tests that _df_columns_match() raises ValueError when the DataFrame has unknown columns"""
+        bad_df = pd.DataFrame([{"nonexistent": "x", "another_bad": "y"}])
+        with pytest.raises(ValueError):
+            clean_database._df_columns_match(bad_df)
+
+
+    def test_dict_columns_match_false_raises_value_error(self, clean_database):
+        """Tests that _dict_columns_match() raises ValueError when the dict has unknown keys"""
+        with pytest.raises(ValueError):
+            clean_database._dict_columns_match({"nonexistent": "x"})
+
+
+    # --- convert_orm_list_to_dataframe ---
+
+    def test_convert_orm_list_to_dataframe(self, clean_database):
+        """Tests that convert_orm_list_to_dataframe() converts ORM objects to a DataFrame"""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+
+        orm_list = clean_database.fetch_all_items()
+        df = clean_database.convert_orm_list_to_dataframe(orm_list)
+
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 2
+        assert set(["id", "name", "age", "email"]).issubset(set(df.columns))
+        assert list(df["name"]) == [TEST_ENTRY_1["name"], TEST_ENTRY_2["name"]]
+
+
 dt_db_file = DatabaseFile("dt_test.db")
 
 
@@ -631,6 +807,12 @@ class TestDatetimeFiltering:
 
         assert len(results) == 1
         assert results[0].name == "Mimi"
+
+
+    def test_switched_date_entry_raises(self, clean_datetime_database):
+        """Tests that inserting SWITCHED_DATE_ENTRY (datetime for Date column, date for DateTime) raises TypeError"""
+        with pytest.raises(TypeError):
+            clean_datetime_database._dict_compatible(SWITCHED_DATE_ENTRY)
 
 
 class TestQuery:
