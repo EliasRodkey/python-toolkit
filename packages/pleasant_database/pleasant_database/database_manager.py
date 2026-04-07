@@ -58,6 +58,7 @@ class DatabaseManager():
         - fetch_item_by_id: Fetches an item by ID; raises ItemNotFoundError if missing.
         - fetch_items_by_attribute: Fetches items from the database based on specified attributes.
         - filter_items: Apply N filters with operators and return ORM objects.
+        - query: Flexible DataFrame-returning query with optional column projection, filtering, sorting, and pagination.
         - to_dataframe: Converts the database table to a pandas DataFrame.
         - upsert: Inserts a new item or updates an existing one based on a match dict.
         - count_items: Returns the count of items matching given attributes.
@@ -73,6 +74,8 @@ class DatabaseManager():
     Private helpers:
         - _build_filter_clauses: Converts a filters dict into a list of SQLAlchemy conditions.
         - _build_single_clause: Builds one SQLAlchemy condition from a column and a spec.
+        - _validate_columns: Validates a list of column name strings against the table schema.
+        - _normalise_order_by: Normalises the order_by parameter to a list of (column, direction) tuples.
     """
 
     def __init__(self, table_class: BaseTable, database_file: DatabaseFile):
