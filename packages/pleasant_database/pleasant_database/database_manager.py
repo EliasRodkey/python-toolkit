@@ -58,6 +58,7 @@ class DatabaseManager():
         - fetch_item_by_id: Fetches an item by ID; raises ItemNotFoundError if missing.
         - fetch_items_by_attribute: Fetches items from the database based on specified attributes.
         - filter_items: Apply N filters with operators and return ORM objects.
+        - query: Flexible DataFrame-returning query with optional column projection, filtering, sorting, and pagination.
         - to_dataframe: Converts the database table to a pandas DataFrame.
         - upsert: Inserts a new item or updates an existing one based on a match dict.
         - count_items: Returns the count of items matching given attributes.
@@ -73,6 +74,8 @@ class DatabaseManager():
     Private helpers:
         - _build_filter_clauses: Converts a filters dict into a list of SQLAlchemy conditions.
         - _build_single_clause: Builds one SQLAlchemy condition from a column and a spec.
+        - _validate_columns: Validates a list of column name strings against the table schema.
+        - _normalise_order_by: Normalises the order_by parameter to a list of (column, direction) tuples.
     """
 
     def __init__(self, table_class: BaseTable, database_file: DatabaseFile):
@@ -288,6 +291,83 @@ class DatabaseManager():
         return pd.read_sql(self.session.query(self.table_class).statement, self.session.bind)
 
 
+    def query(
+        self,
+        columns: list[str] | None = None,
+        filters: dict | None = None,
+        order_by: str | tuple | list | None = None,
+        ascending: bool = True,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> pd.DataFrame:
+        """
+        Flexible DataFrame-returning query with optional column projection, filtering, sorting, and pagination.
+
+        Args:
+            columns (list[str] | None): Column names to return. None returns all columns.
+            filters (dict | None): Filter dict using the same format as filter_items(). None applies no filter.
+            order_by: Column(s) to sort by. Accepted forms:
+                - str: ``"age"`` — sorts ascending by default (use ``ascending`` to flip)
+                - tuple: ``("age", "desc")`` — single column with explicit direction
+                - list of tuples: ``[("age", "desc"), ("name", "asc")]`` — multi-column sort
+                - None or []: no sorting applied
+            ascending (bool): Sort direction when order_by is a bare string. Default True.
+            limit (int | None): Maximum number of rows to return. None returns all.
+            offset (int | None): Number of rows to skip before returning results. None skips none.
+
+        Returns:
+            pd.DataFrame: Query results. Empty DataFrame if no rows match.
+
+        Raises:
+            ValueError: If columns is an empty list, an invalid column name is given in columns
+                        or order_by, or an invalid/malformed order_by direction/tuple is given.
+            AttributeError: If a filter column name does not exist on the table.
+        """
+        logger.debug("Executing query.", extra={LoggingExtras.TABLE_NAME: self.table_name})
+
+        # Guard: empty columns list is ambiguous — reject it early
+        if columns is not None and len(columns) == 0:
+            raise ValueError("columns list must not be empty")
+
+        # Normalise order_by to list[tuple[str, str]]
+        normalised_order_by = self._normalise_order_by(order_by, ascending)
+
+        # Build base query
+        if columns is None:
+            q = self.session.query(self.table_class)
+            selecting_columns = False
+        else:
+            self._validate_columns(columns, "columns")
+            col_attrs = [getattr(self.table_class, col) for col in columns]
+            q = self.session.query(*col_attrs)
+            selecting_columns = True
+
+        # Apply filters
+        if filters is not None:
+            clauses = self._build_filter_clauses(filters)
+            q = q.filter(sqlalchemy.and_(*clauses))
+
+        # Apply sorting
+        for col_name, direction in normalised_order_by:
+            col_attr = getattr(self.table_class, col_name)
+            q = q.order_by(col_attr.asc() if direction == "asc" else col_attr.desc())
+
+        # Apply pagination (offset before limit)
+        if offset is not None:
+            q = q.offset(offset)
+        if limit is not None:
+            q = q.limit(limit)
+
+        rows = q.all()
+
+        if not rows:
+            logger.warning("query() returned no results.", extra={LoggingExtras.TABLE_NAME: self.table_name})
+
+        if selecting_columns:
+            return pd.DataFrame(rows, columns=columns) if rows else pd.DataFrame(columns=columns)
+        else:
+            return orm_list_to_dataframe(rows)
+
     def convert_orm_list_to_dataframe(self, orm_list: List[BaseTable]) -> pd.DataFrame:
         """
         Converts a list of ORM objects to a pandas DataFrame.
@@ -317,7 +397,7 @@ class DatabaseManager():
                                         })
         ## Check to make sure the dictionary keys match the database table columns
         if self._dict_columns_match(kwargs):
-            
+
             # Locate the item in the database using its ID
             item = self.session.query(self.table_class).filter_by(id=item_id).first()
 
@@ -327,6 +407,8 @@ class DatabaseManager():
                 for key, value in kwargs.items():
                     if hasattr(item, key): # Check if the attribute exists in the item
                         setattr(item, key, value)
+            else:
+                raise ItemNotFoundError(item_id, self.table_class)
 
         try:
             self.session.flush() # Detects if the item already exists in the database
@@ -359,14 +441,15 @@ class DatabaseManager():
             self.session.delete(item)
             self.session.commit()
             logger.info(f"Item deleted from database with ID: {item_id}.", extra={
-                                                                            LoggingExtras.TABLE_NAME: self.table_name, 
+                                                                            LoggingExtras.TABLE_NAME: self.table_name,
                                                                             LoggingExtras.ITEM_ID: item_id
                                                                         })
         else:
             logger.warning(f"Item not found in database with ID: {item_id}.", extra={
-                                                                            LoggingExtras.TABLE_NAME: self.table_name, 
+                                                                            LoggingExtras.TABLE_NAME: self.table_name,
                                                                             LoggingExtras.ITEM_ID: item_id
                                                                         })
+            raise ItemNotFoundError(item_id, self.table_class)
 
     
     def delete_items_by_attribute(self, **kwargs):
@@ -677,6 +760,56 @@ class DatabaseManager():
     }
 
 
+    def _validate_columns(self, columns: list[str], context: str) -> None:
+        """Raises ValueError if any name in columns is not a column on the table."""
+        valid = set(self.table_class.get_column_names())
+        for col in columns:
+            if col not in valid:
+                logger.error(
+                    f"Invalid column '{col}' in {context}.",
+                    extra={LoggingExtras.TABLE_NAME: self.table_name, LoggingExtras.COLUMNS: col},
+                )
+                raise ValueError(f"Invalid column '{col}' in {context}. Valid columns: {sorted(valid)}")
+
+
+    def _normalise_order_by(self, order_by, ascending: bool) -> list[tuple[str, str]]:
+        """
+        Normalises the order_by parameter to a list of (column, direction) tuples.
+
+        Raises:
+            ValueError: If a tuple doesn't have exactly 2 elements, the direction is invalid,
+                        or a column name doesn't exist on the table.
+        """
+        if order_by is None or order_by == []:
+            return []
+
+        # Wrap bare string and single tuple into a list for uniform processing
+        if isinstance(order_by, str):
+            order_by = [(order_by, "asc" if ascending else "desc")]
+        elif isinstance(order_by, tuple):
+            if len(order_by) != 2:
+                raise ValueError(
+                    f"order_by tuple must have exactly 2 elements (column, direction), got {len(order_by)}"
+                )
+            order_by = [order_by]
+
+        result = []
+        for item in order_by:
+            if not isinstance(item, tuple) or len(item) != 2:
+                raise ValueError(
+                    f"Each order_by entry must be a 2-element tuple (column, direction), got: {item!r}"
+                )
+            col_name, direction = item
+            direction = direction.lower()
+            if direction not in ("asc", "desc"):
+                raise ValueError(f"Invalid sort direction '{direction}'. Must be 'asc' or 'desc'.")
+            result.append((col_name, direction))
+
+        col_names = [col for col, _ in result]
+        self._validate_columns(col_names, "order_by")
+        return result
+
+
     def _build_single_clause(self, column, spec):
         """
         Builds a single SQLAlchemy filter condition from a column and spec.
@@ -747,3 +880,6 @@ class DatabaseManager():
 
         return clauses
     
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(table={self.table_name}, file={self.file.name})"

@@ -3,23 +3,17 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pleasant-loggers"
-version = "2.0.0"
-description = "robust and generic logging system for Python"
+name = "pleasant-errors"
+version = "1.0.0"
+description = "Structured error handling, Result types, and catch decorator for python-toolkit"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 readme = "README.md"
 license = {text = "MIT"}
-dependencies = [
-    "structlog>=24.0",
-]
+dependencies = ["pleasant-loggers"]
 
 [tool.setuptools.packages.find]
 where = ["."]
 exclude = ["tests*", "test*"]
 
 [project.optional-dependencies]
-analysis = ["pandas>=2.0"]
 dev = ["pytest"]
-
-[project.scripts]
-pleasant-logs = "pleasant_loggers._analysis:cli_main"

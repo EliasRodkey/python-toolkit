@@ -38,7 +38,7 @@ class DatabaseFile():
     Class which manages a single database file, name attribute must be valid .db filename
 
     Functions:
-        - exxists: checks if the database file exists in the given directory
+        - exists: checks if the database file exists in the given directory
         - create: creates a new database file in the given directory
         - move: moves the database file to a new directory
         - delete: deletes the database file from the filesystem
@@ -124,6 +124,9 @@ class DatabaseFile():
                                                                                         })
         else:
             logger.error(f"DatabaseFile.delete() -> {self.name} does not exist in {self.directory}. Cannot delete.", extra={
-                                                                                                                    LoggingExtras.FILE: self.name, 
-                                                                                                                    LoggingExtras.FILE: self.directory
+                                                                                                                    LoggingExtras.FILE: self.file_path
                                                                                                                     })
+    
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(path={self.abspath})"

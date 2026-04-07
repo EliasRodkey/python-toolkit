@@ -68,10 +68,10 @@ __table_args__ = (
 The DatabaseFile object represents the actual file of the database and is required to initialize a DatabaseManager object.
 
 ```python
-file = DatabaseFile(db_name, directory="data/dbs")
+file = DatabaseFile(db_name, directory="data/database")
 
 db_name: valid .db filename
-directory: relative path to database directory (default data//dbs)
+directory: relative path to database directory (default data//database)
 ```
 
 DatabaseFile funcitons:
@@ -99,11 +99,21 @@ manager.add_item(entry: dictionary with columns matching the db table class)
 manager.add_multiple_items(entries: list of entries)
 manager.append_dataframe(df) # pandas DataFrame with columns that match the db table class
 
-manager.fetch_all(as_dataframe=True) # returns all table class instances in the table
-manager.fetch_item_by_id(id: int, as_dataframe=True) # returns an individual table class instance with data
-manager.fetch_items_by_attribute(**kwargs, as_dataframe=True) # allows filtering of table by kwargs
-manager.filter_items(filters: dict, use_or=False, as_dataframe=True) # allows filtering of database table and reading of filtered items
-manager.to_dataframe() -> Returns the entire database as a pandas DataFrame
+manager.fetch_all_items() # returns all table class instances in the table
+manager.fetch_item_by_id(id: int) # returns an individual table class instance with data
+manager.fetch_items_by_attribute(**kwargs) # allows filtering of table by kwargs
+manager.filter_items(filters: dict, use_or=False) # allows filtering of database table, returns ORM objects
+manager.to_dataframe() # returns the entire database as a pandas DataFrame
+
+# Flexible query returning a DataFrame — supports column projection, filtering, sorting, and pagination
+manager.query(
+    columns=["name", "age"],          # optional: subset of columns to return (None = all)
+    filters={"age": (">", 18)},       # optional: same filter dict format as filter_items()
+    order_by=[("age", "desc"), ("name", "asc")],  # optional: str, (col, dir) tuple, or list of tuples
+    ascending=True,                   # only used when order_by is a bare string
+    limit=10,                         # optional: max rows to return
+    offset=0,                         # optional: rows to skip before returning results
+)
 
 manager.update_item(item_id: int, **kwargs) # updates values kwargs of an item with a given ID
 manager.delete_item(item_id: int) # Deletes an item with the given item id

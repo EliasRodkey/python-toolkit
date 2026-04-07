@@ -1,15 +1,37 @@
-# Import specific functions or classes for direct access at a package level
-from .configure_logging import configure_logging
-from .handler_controller import HandlerController, StructuredLogger
-from .json_log_parser import JSONLogParser, LogRecord
-from .utils import LoggingFormats, LOG_FILE_DEFAULT_DIRECTORY, LoggingMode, add_performance_level
-from .utils import create_datestamp, create_timestamp, create_log_datetime_stamp, compose_global_run_id
-from .utils import get_log_directories, get_log_files, delete_log_directory, delete_todays_logs, clear_logs
+# Configuration
+from ._config import configure_logging
+from ._handlers import HandlerController
 
-# Set default logger to structured logger
-import logging
-logging.setLoggerClass(StructuredLogger)
+# Modes
+from ._modes import (
+    LoggingMode,
+    AbstractLoggingMode,
+    DirectoryLayout,
+    BASIC_SINGLE_FILE,
+    BASIC_JSON_FILE,
+    DIRECTORY_PER_RUN,
+    DAILY_DIRECTORY,
+    BASIC_ROTATING_HANDLER,
+)
 
-# Define package-level variables
-__version__ = "1.5.5"
-__Author__ = "Elias Rodkey"
+# Levels
+from ._levels import add_performance_level
+
+# Logger entry point
+from ._loggers import get_logger
+
+# Analysis (pandas loaded lazily inside LogReader)
+from ._analysis import LogReader
+
+# Utilities
+from ._utils import (
+    get_log_directories,
+    get_log_files,
+    delete_log_directory,
+    delete_todays_logs,
+    clear_logs,
+    LOG_FILE_DEFAULT_DIRECTORY,
+)
+
+__version__ = "2.0.0"
+__author__ = "Elias Rodkey"

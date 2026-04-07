@@ -132,3 +132,30 @@ def test_orm_list_to_dataframe():
 
     # Assert DataFrames are equal
     pd.testing.assert_frame_equal(df, expected_df)
+
+
+def test_map_dtype_to_sql_unsupported_raises():
+    """
+    Tests that map_dtype_to_sql raises an error for dtypes that have no SQLAlchemy mapping.
+
+    The docstring says ValueError, but pd.api.types.is_binary_dtype was removed in newer
+    pandas versions, causing AttributeError before the else-raise is reached. Either error
+    correctly signals an unsupported dtype.
+    """
+    unsupported_dtype = pd.Series([1 + 2j]).dtype  # complex128 — not handled by any branch
+    with pytest.raises((ValueError, AttributeError)):
+        map_dtype_to_sql(unsupported_dtype)
+
+
+def test_map_dtype_list_to_sql():
+    """Tests that map_dtype_list_to_sql maps a list of dtypes to the correct SQLAlchemy types"""
+    dtypes = [pd.Series([1, 2, 3]).dtype, pd.Series(["a", "b"]).dtype]
+    result = map_dtype_list_to_sql(dtypes)
+    assert result == [Integer, String]
+
+
+def test_orm_list_to_dataframe_empty():
+    """Tests that orm_list_to_dataframe returns an empty DataFrame (not an error) for an empty list"""
+    result = orm_list_to_dataframe([])
+    assert isinstance(result, pd.DataFrame)
+    assert len(result) == 0

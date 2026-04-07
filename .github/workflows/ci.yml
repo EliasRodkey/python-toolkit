@@ -12,6 +12,7 @@ jobs:
     outputs:
       loggers: ${{ steps.changed.outputs.loggers }}
       database: ${{ steps.changed.outputs.database }}
+      errors: ${{ steps.changed.outputs.errors }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -25,6 +26,7 @@ jobs:
           cat changed_files.txt
           echo "loggers=$(grep -c 'packages/pleasant_loggers/' changed_files.txt || true)" >> $GITHUB_OUTPUT
           echo "database=$(grep -c 'packages/pleasant_database/' changed_files.txt || true)" >> $GITHUB_OUTPUT
+          echo "errors=$(grep -c 'packages/pleasant_errors/' changed_files.txt || true)" >> $GITHUB_OUTPUT
 
   test-loggers:
     needs: detect-changes
@@ -53,3 +55,17 @@ jobs:
         run: uv sync --package pleasant-database --extra dev
       - name: Run tests
         run: uv run --package pleasant-database pytest packages/pleasant_database/tests/
+
+  test-errors:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.errors != '0'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: uv sync --package pleasant-errors --extra dev
+      - name: Run tests
+        run: uv run --package pleasant-errors pytest packages/pleasant_errors/tests/

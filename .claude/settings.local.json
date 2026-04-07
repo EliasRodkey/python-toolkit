@@ -1,0 +1,25 @@
+{
+    "permissions": {
+        "allow": [
+            "Read",
+            "Bash(pytest*)",
+            "Bash(python -m pytest*)",
+            "Bash(python3 -m pytest*)",
+            "Bash(grep*)",
+            "Bash(ls*)",
+            "Bash(cd*)",
+            "Bash(git status*)",
+            "Bash(git diff*)",
+            "Bash(git log*)",
+            "Bash(gh issue view*)",
+            "Bash(gh issue create --repo EliasRodkey/python-toolkit*)"
+
+        ],
+        "deny": [
+            "Bash(rm*)",
+            "Bash(git push*)",
+            "Bash(git reset --hard*)"
+        ]
+
+    }
+}
