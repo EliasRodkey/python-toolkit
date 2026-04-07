@@ -828,3 +828,54 @@ class TestQuery:
         """order_by=('age',) — 1-element tuple — raises ValueError."""
         with pytest.raises(ValueError):
             clean_database.query(order_by=("age",))
+
+    def test_query_limit_one(self, clean_database):
+        """limit=1 returns exactly 1 row."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        result = clean_database.query(limit=1)
+
+        assert len(result) == 1
+
+    def test_query_limit_exceeds_rows(self, clean_database):
+        """limit larger than row count returns all rows without error."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+
+        result = clean_database.query(limit=100)
+
+        assert len(result) == 2
+
+    def test_query_offset(self, clean_database):
+        """offset=1 with sorting skips the first sorted row."""
+        clean_database.add_item(**TEST_ENTRY_1)  # John Doe
+        clean_database.add_item(**TEST_ENTRY_2)  # Jane Doe
+        clean_database.add_item(**TEST_ENTRY_3)  # Alice Smith
+
+        result = clean_database.query(columns=["name"], order_by="name", offset=1)
+
+        # Sorted: Alice, Jane, John — skip Alice
+        assert list(result["name"]) == ["Jane Doe", "John Doe"]
+
+    def test_query_limit_and_offset(self, clean_database):
+        """limit=1, offset=1 returns exactly the second sorted row."""
+        clean_database.add_item(**TEST_ENTRY_1)  # John Doe
+        clean_database.add_item(**TEST_ENTRY_2)  # Jane Doe
+        clean_database.add_item(**TEST_ENTRY_3)  # Alice Smith
+
+        result = clean_database.query(columns=["name"], order_by="name", limit=1, offset=1)
+
+        # Sorted: Alice, Jane, John — skip Alice, take Jane
+        assert len(result) == 1
+        assert result.iloc[0]["name"] == "Jane Doe"
+
+    def test_query_offset_beyond_rows(self, clean_database):
+        """offset beyond total row count returns empty DataFrame."""
+        clean_database.add_item(**TEST_ENTRY_1)
+
+        result = clean_database.query(offset=100)
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 0
