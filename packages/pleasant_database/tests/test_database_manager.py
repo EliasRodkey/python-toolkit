@@ -879,3 +879,54 @@ class TestQuery:
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 0
+
+    def test_query_columns_filter_sort(self, clean_database):
+        """Column selection, filter, and sort work together correctly."""
+        clean_database.add_item(**TEST_ENTRY_1)  # John, 30
+        clean_database.add_item(**TEST_ENTRY_2)  # Jane, 25
+        clean_database.add_item(**TEST_ENTRY_3)  # Alice, 30
+
+        result = clean_database.query(
+            columns=["name", "age"],
+            filters={"age": 30},
+            order_by="name",
+        )
+
+        assert list(result.columns) == ["name", "age"]
+        assert len(result) == 2
+        assert list(result["name"]) == ["Alice Smith", "John Doe"]
+
+    def test_query_filter_sort_paginate(self, clean_database):
+        """Sort applies before pagination: filter to 2 rows, sort, take only first."""
+        clean_database.add_item(**TEST_ENTRY_1)  # John, 30
+        clean_database.add_item(**TEST_ENTRY_2)  # Jane, 25
+        clean_database.add_item(**TEST_ENTRY_3)  # Alice, 30
+
+        # Filter: age == 30 → John, Alice; Sort by name asc → Alice, John; limit 1 → Alice
+        result = clean_database.query(
+            columns=["name"],
+            filters={"age": 30},
+            order_by="name",
+            limit=1,
+        )
+
+        assert len(result) == 1
+        assert result.iloc[0]["name"] == "Alice Smith"
+
+    def test_query_all_params(self, clean_database):
+        """All parameters combined: columns + filter + order_by + limit."""
+        clean_database.add_item(**TEST_ENTRY_1)  # John, 30
+        clean_database.add_item(**TEST_ENTRY_2)  # Jane, 25
+        clean_database.add_item(**TEST_ENTRY_3)  # Alice, 30
+
+        result = clean_database.query(
+            columns=["name", "age"],
+            filters={"age": 30},
+            order_by="name",
+            limit=1,
+        )
+
+        assert list(result.columns) == ["name", "age"]
+        assert len(result) == 1
+        assert result.iloc[0]["name"] == "Alice Smith"
+        assert result.iloc[0]["age"] == 30
