@@ -760,3 +760,71 @@ class TestQuery:
 
         assert list(result.columns) == ["name"]
         assert len(result) == 2
+
+    def test_query_order_by_string_ascending(self, clean_database):
+        """order_by='name' sorts rows A-Z."""
+        clean_database.add_item(**TEST_ENTRY_1)  # John Doe
+        clean_database.add_item(**TEST_ENTRY_2)  # Jane Doe
+        clean_database.add_item(**TEST_ENTRY_3)  # Alice Smith
+
+        result = clean_database.query(columns=["name"], order_by="name")
+
+        assert list(result["name"]) == ["Alice Smith", "Jane Doe", "John Doe"]
+
+    def test_query_order_by_string_descending(self, clean_database):
+        """order_by='name', ascending=False sorts rows Z-A."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        result = clean_database.query(columns=["name"], order_by="name", ascending=False)
+
+        assert list(result["name"]) == ["John Doe", "Jane Doe", "Alice Smith"]
+
+    def test_query_order_by_single_tuple_desc(self, clean_database):
+        """order_by=('age', 'desc') puts highest ages first."""
+        clean_database.add_item(**TEST_ENTRY_1)  # age 30
+        clean_database.add_item(**TEST_ENTRY_2)  # age 25
+        clean_database.add_item(**TEST_ENTRY_3)  # age 30
+
+        result = clean_database.query(columns=["age"], order_by=("age", "desc"))
+
+        assert result.iloc[0]["age"] == 30
+        assert result.iloc[-1]["age"] == 25
+
+    def test_query_order_by_list_of_tuples(self, clean_database):
+        """Multi-column sort: age asc, then name asc — Alice before John (both age 30)."""
+        clean_database.add_item(**TEST_ENTRY_1)  # John, 30
+        clean_database.add_item(**TEST_ENTRY_2)  # Jane, 25
+        clean_database.add_item(**TEST_ENTRY_3)  # Alice, 30
+
+        result = clean_database.query(
+            columns=["name", "age"],
+            order_by=[("age", "asc"), ("name", "asc")]
+        )
+
+        assert list(result["name"]) == ["Jane Doe", "Alice Smith", "John Doe"]
+
+    def test_query_order_by_case_insensitive_direction(self, clean_database):
+        """order_by direction string is case-insensitive ('DESC' == 'desc')."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+
+        result = clean_database.query(columns=["age"], order_by=("age", "DESC"))
+
+        assert result.iloc[0]["age"] == 30
+
+    def test_query_order_by_invalid_column_raises(self, clean_database):
+        """order_by with a non-existent column raises ValueError."""
+        with pytest.raises(ValueError, match="nonexistent"):
+            clean_database.query(order_by="nonexistent")
+
+    def test_query_order_by_invalid_direction_raises(self, clean_database):
+        """order_by with an invalid direction raises ValueError."""
+        with pytest.raises(ValueError, match="direction"):
+            clean_database.query(order_by=("age", "downward"))
+
+    def test_query_order_by_single_element_tuple_raises(self, clean_database):
+        """order_by=('age',) — 1-element tuple — raises ValueError."""
+        with pytest.raises(ValueError):
+            clean_database.query(order_by=("age",))
