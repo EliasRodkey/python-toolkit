@@ -1111,4 +1111,106 @@ class TestQuery:
         assert list(result.columns) == ["name", "age"]
         assert len(result) == 1
         assert result.iloc[0]["name"] == "Alice Smith"
-        assert result.iloc[0]["age"] == 30
+
+
+class TestQuerySearch:
+    """Tests the search parameter of query()"""
+
+    # --- Cycle 1: basic match ---
+
+    def test_search_finds_match(self, clean_database):
+        """search returns rows where any string column contains the term"""
+        clean_database.add_item(**TEST_ENTRY_1)  # name="John Doe", email="john.doe@email.com"
+        clean_database.add_item(**TEST_ENTRY_2)  # name="Jane Doe", email="jane.doe@email.com"
+
+        result = clean_database.query(search="John")
+
+        assert len(result) == 1
+        assert result.iloc[0]["name"] == "John Doe"
+
+    # --- Cycle 2: no match ---
+
+    def test_search_no_match_returns_empty(self, clean_database):
+        """search returns an empty DataFrame when no row contains the term"""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+
+        result = clean_database.query(search="zzznomatch")
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 0
+
+    # --- Cycle 3: case insensitivity ---
+
+    def test_search_case_insensitive(self, clean_database):
+        """search is case-insensitive: uppercase term matches lowercase data"""
+        clean_database.add_item(**TEST_ENTRY_3)  # name="Alice Smith"
+
+        result = clean_database.query(search="ALICE")
+
+        assert len(result) == 1
+        assert result.iloc[0]["name"] == "Alice Smith"
+
+    # --- Cycle 4: OR across columns ---
+
+    def test_search_matches_any_column(self, clean_database):
+        """search matches if term appears in any string column (OR logic)"""
+        clean_database.add_item(**TEST_ENTRY_1)  # name="John Doe", email="john.doe@email.com"
+        clean_database.add_item(**TEST_ENTRY_3)  # name="Alice Smith", email="alice.smith@email.com"
+
+        # "john.doe" only appears in the email column, not the name column
+        result = clean_database.query(search="john.doe")
+
+        assert len(result) == 1
+        assert result.iloc[0]["name"] == "John Doe"
+
+    # --- Cycle 6: explicit search_columns ---
+
+    def test_search_explicit_columns(self, clean_database):
+        """search_columns limits search scope; match in excluded column is not returned"""
+        clean_database.add_item(**TEST_ENTRY_1)  # name="John Doe", email="john.doe@email.com"
+
+        # "john.doe" is in email but we restrict search to name only → no match
+        result = clean_database.query(search="john.doe", search_columns=["name"])
+
+        assert len(result) == 0
+
+    # --- Cycle 7: invalid column name raises ---
+
+    def test_search_invalid_column_raises(self, clean_database):
+        """search_columns with a non-existent column raises ValueError"""
+        with pytest.raises(ValueError):
+            clean_database.query(search="John", search_columns=["nonexistent_col"])
+
+    # --- Cycle 8: non-string column raises ---
+
+    def test_search_non_string_column_raises(self, clean_database):
+        """search_columns with a non-string column (e.g. age) raises ValueError"""
+        with pytest.raises(ValueError):
+            clean_database.query(search="30", search_columns=["age"])
+
+    # --- Cycle 9: search=None regression ---
+
+    def test_search_none_does_not_change_behavior(self, clean_database):
+        """omitting search returns all rows, same as before the feature existed"""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        result = clean_database.query(search=None)
+
+        assert len(result) == 3
+
+    # --- Cycle 5: AND with filters ---
+
+    def test_search_with_filters(self, clean_database):
+        """search AND filters must both match; filter alone is not enough"""
+        clean_database.add_item(**TEST_ENTRY_1)  # name="John Doe", age=30
+        clean_database.add_item(**TEST_ENTRY_2)  # name="Jane Doe", age=25
+        # Both contain "Doe" in name — search matches both.
+        # Only TEST_ENTRY_1 has age=30 — filter reduces to 1.
+
+        result = clean_database.query(search="Doe", filters={"age": 30})
+
+        assert len(result) == 1
+        assert result.iloc[0]["name"] == "John Doe"

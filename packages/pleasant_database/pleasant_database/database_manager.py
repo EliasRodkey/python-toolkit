@@ -58,7 +58,8 @@ class DatabaseManager():
         - fetch_item_by_id: Fetches an item by ID; raises ItemNotFoundError if missing.
         - fetch_items_by_attribute: Fetches items from the database based on specified attributes.
         - filter_items: Apply N filters with operators and return ORM objects.
-        - query: Flexible DataFrame-returning query with optional column projection, filtering, sorting, and pagination.
+        - query: Flexible DataFrame-returning query with optional column projection, filtering, sorting, pagination, and substring search.
+        - convert_orm_list_to_dataframe: Converts a list of ORM objects to a pandas DataFrame.
         - to_dataframe: Converts the database table to a pandas DataFrame.
         - upsert: Inserts a new item or updates an existing one based on a match dict.
         - count_items: Returns the count of items matching given attributes.
@@ -299,6 +300,8 @@ class DatabaseManager():
         ascending: bool = True,
         limit: int | None = None,
         offset: int | None = None,
+        search: str | None = None,
+        search_columns: list[str] | None = None,
     ) -> pd.DataFrame:
         """
         Flexible DataFrame-returning query with optional column projection, filtering, sorting, and pagination.
@@ -314,13 +317,21 @@ class DatabaseManager():
             ascending (bool): Sort direction when order_by is a bare string. Default True.
             limit (int | None): Maximum number of rows to return. None returns all.
             offset (int | None): Number of rows to skip before returning results. None skips none.
+            search (str | None): Substring to search for across string columns (case-insensitive).
+                A row is returned if the term appears in *any* of the searched columns.
+                Automatically wrapped as ``%term%``. Combined with ``filters`` using AND logic.
+                None disables search entirely.
+            search_columns (list[str] | None): Columns to search when ``search`` is set.
+                Defaults to all ``str``-typed columns on the table.
+                All specified columns must exist and be string-typed, otherwise ValueError is raised.
 
         Returns:
             pd.DataFrame: Query results. Empty DataFrame if no rows match.
 
         Raises:
-            ValueError: If columns is an empty list, an invalid column name is given in columns
-                        or order_by, or an invalid/malformed order_by direction/tuple is given.
+            ValueError: If columns is an empty list, an invalid column name is given in columns,
+                        order_by, or search_columns, or if search_columns contains a non-string column,
+                        or an invalid/malformed order_by direction/tuple is given.
             AttributeError: If a filter column name does not exist on the table.
         """
         logger.debug("Executing query.", extra={LoggingExtras.TABLE_NAME: self.table_name})
@@ -346,6 +357,22 @@ class DatabaseManager():
         if filters is not None:
             clauses = self._build_filter_clauses(filters)
             q = q.filter(sqlalchemy.and_(*clauses))
+
+        # Apply search (case-insensitive partial match across string columns)
+        if search is not None:
+            col_types = self.table_class.get_column_python_types()
+            if search_columns is None:
+                resolved = [col for col, typ in col_types.items() if typ == str]
+            else:
+                self._validate_columns(search_columns, "search_columns")
+                non_str = [col for col in search_columns if col_types.get(col) != str]
+                if non_str:
+                    raise ValueError(
+                        f"search_columns must only contain string-typed columns. Non-string: {non_str}"
+                    )
+                resolved = search_columns
+            ilike_clauses = [getattr(self.table_class, col).ilike(f"%{search}%") for col in resolved]
+            q = q.filter(sqlalchemy.or_(*ilike_clauses))
 
         # Apply sorting
         for col_name, direction in normalised_order_by:

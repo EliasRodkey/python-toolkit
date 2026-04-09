@@ -105,7 +105,7 @@ manager.fetch_items_by_attribute(**kwargs) # allows filtering of table by kwargs
 manager.filter_items(filters: dict, use_or=False) # allows filtering of database table, returns ORM objects
 manager.to_dataframe() # returns the entire database as a pandas DataFrame
 
-# Flexible query returning a DataFrame — supports column projection, filtering, sorting, and pagination
+# Flexible query returning a DataFrame — supports column projection, filtering, sorting, pagination, and search
 manager.query(
     columns=["name", "age"],          # optional: subset of columns to return (None = all)
     filters={"age": (">", 18)},       # optional: same filter dict format as filter_items()
@@ -113,7 +113,11 @@ manager.query(
     ascending=True,                   # only used when order_by is a bare string
     limit=10,                         # optional: max rows to return
     offset=0,                         # optional: rows to skip before returning results
+    search="john",                    # optional: case-insensitive substring match across string columns
+    search_columns=["name", "email"], # optional: restrict search to these columns (default: all str columns)
 )
+
+manager.convert_orm_list_to_dataframe(orm_list) # converts a list of ORM objects to a pandas DataFrame
 
 manager.update_item(item_id: int, **kwargs) # updates values kwargs of an item with a given ID
 manager.delete_item(item_id: int) # Deletes an item with the given item id
@@ -124,3 +128,17 @@ manager.clear_table() # Deletes all items in the database table.
 manager.start_session() # initiates when instance initialized
 manager.end_session() # should be called before exiting program
 ```
+
+## Version History
+
+### 1.4.1
+- Added `search` and `search_columns` parameters to `query()` for case-insensitive substring matching across string columns. Matches any column by default (OR logic), composable with `filters` (AND), auto-wraps term as `%term%`.
+
+### 1.4.0
+- `delete_item()` and `update_item()` now raise `ItemNotFoundError` when the target ID does not exist.
+
+### 1.3.x
+- `query()` enhancements: added `limit`/`offset` pagination, multi-column sorting, filter support, and column projection.
+
+### 1.2.x
+- Added `query()` method returning results as a pandas DataFrame.
