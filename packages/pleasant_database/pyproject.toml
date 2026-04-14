@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pleasant-database"
-version = "1.4.1"
+version = "1.4.2"
 description = "package for handling local database files and data"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 readme = "README.md"

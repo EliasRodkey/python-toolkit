@@ -33,7 +33,7 @@ import time
 from pleasant_database import DEFAULT_DB_DIRECTORY
 from pleasant_database.base_table import DatabaseIntegrityError, ItemNotFoundError
 from pleasant_database.database_file import DatabaseFile
-from pleasant_database.database_manager import DatabaseManager
+from pleasant_database.database_manager import DatabaseManager, QueryResult
 from .mock_table_object import MockTableObject, DatetimeMockTableObject
 from .mock_table_object import TEST_ENTRY_1, TEST_ENTRY_2, TEST_ENTRY_3, INVALID_ENTRY, INVALID_DF
 from .mock_table_object import DATE_ENTRY_1, DATE_ENTRY_2, DATE_ENTRY_3, SWITCHED_DATE_ENTRY
@@ -828,16 +828,17 @@ class TestQuery:
 
         result = clean_database.query()
 
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 3
-        assert set(["id", "name", "age", "email"]).issubset(set(result.columns))
+        assert isinstance(result, QueryResult)
+        assert isinstance(result.data, pd.DataFrame)
+        assert len(result.data) == 3
+        assert set(["id", "name", "age", "email"]).issubset(set(result.data.columns))
 
     def test_query_empty_table_returns_empty_dataframe(self, clean_database):
         """query() on an empty table returns an empty DataFrame (not raises)."""
         result = clean_database.query()
 
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 0
+        assert isinstance(result.data, pd.DataFrame)
+        assert len(result.data) == 0
 
     def test_query_specific_columns_subset(self, clean_database):
         """query(columns=[...]) returns only the requested columns."""
@@ -846,8 +847,8 @@ class TestQuery:
 
         result = clean_database.query(columns=["name", "age"])
 
-        assert list(result.columns) == ["name", "age"]
-        assert len(result) == 2
+        assert list(result.data.columns) == ["name", "age"]
+        assert len(result.data) == 2
 
     def test_query_single_column(self, clean_database):
         """query(columns=['email']) returns a single-column DataFrame."""
@@ -855,16 +856,16 @@ class TestQuery:
 
         result = clean_database.query(columns=["email"])
 
-        assert list(result.columns) == ["email"]
-        assert result.iloc[0]["email"] == TEST_ENTRY_1["email"]
+        assert list(result.data.columns) == ["email"]
+        assert result.data.iloc[0]["email"] == TEST_ENTRY_1["email"]
 
     def test_query_empty_table_specific_columns_preserves_column_names(self, clean_database):
         """query(columns=[...]) on empty table returns empty DataFrame with correct columns."""
         result = clean_database.query(columns=["name"])
 
-        assert isinstance(result, pd.DataFrame)
-        assert list(result.columns) == ["name"]
-        assert len(result) == 0
+        assert isinstance(result.data, pd.DataFrame)
+        assert list(result.data.columns) == ["name"]
+        assert len(result.data) == 0
 
     def test_query_invalid_column_raises(self, clean_database):
         """query(columns=['nonexistent']) raises ValueError."""
@@ -884,7 +885,7 @@ class TestQuery:
 
         result = clean_database.query(filters={"age": 30})
 
-        assert len(result) == 2
+        assert len(result.data) == 2
 
     def test_query_filter_operator(self, clean_database):
         """filters with > operator returns matching rows."""
@@ -894,8 +895,8 @@ class TestQuery:
 
         result = clean_database.query(filters={"age": (">", 25)})
 
-        assert len(result) == 2
-        assert all(result["age"] > 25)
+        assert len(result.data) == 2
+        assert all(result.data["age"] > 25)
 
     def test_query_filter_between(self, clean_database):
         """between operator returns only rows in range."""
@@ -905,8 +906,8 @@ class TestQuery:
 
         result = clean_database.query(filters={"age": ("between", (24, 29))})
 
-        assert len(result) == 1
-        assert result.iloc[0]["name"] == TEST_ENTRY_2["name"]
+        assert len(result.data) == 1
+        assert result.data.iloc[0]["name"] == TEST_ENTRY_2["name"]
 
     def test_query_filter_list_of_tuples(self, clean_database):
         """list of tuples applies multiple constraints on one column."""
@@ -916,7 +917,7 @@ class TestQuery:
 
         result = clean_database.query(filters={"age": [(">=", 25), ("<=", 30)]})
 
-        assert len(result) == 3
+        assert len(result.data) == 3
 
     def test_query_filter_no_matches(self, clean_database):
         """Non-matching filter returns empty DataFrame."""
@@ -924,8 +925,8 @@ class TestQuery:
 
         result = clean_database.query(filters={"age": 999})
 
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 0
+        assert isinstance(result.data, pd.DataFrame)
+        assert len(result.data) == 0
 
     def test_query_filter_invalid_column_raises(self, clean_database):
         """filters with a non-existent column raises AttributeError (from _build_filter_clauses)."""
@@ -940,8 +941,8 @@ class TestQuery:
 
         result = clean_database.query(columns=["name"], filters={"age": 30})
 
-        assert list(result.columns) == ["name"]
-        assert len(result) == 2
+        assert list(result.data.columns) == ["name"]
+        assert len(result.data) == 2
 
     def test_query_order_by_string_ascending(self, clean_database):
         """order_by='name' sorts rows A-Z."""
@@ -951,7 +952,7 @@ class TestQuery:
 
         result = clean_database.query(columns=["name"], order_by="name")
 
-        assert list(result["name"]) == ["Alice Smith", "Jane Doe", "John Doe"]
+        assert list(result.data["name"]) == ["Alice Smith", "Jane Doe", "John Doe"]
 
     def test_query_order_by_string_descending(self, clean_database):
         """order_by='name', ascending=False sorts rows Z-A."""
@@ -961,7 +962,7 @@ class TestQuery:
 
         result = clean_database.query(columns=["name"], order_by="name", ascending=False)
 
-        assert list(result["name"]) == ["John Doe", "Jane Doe", "Alice Smith"]
+        assert list(result.data["name"]) == ["John Doe", "Jane Doe", "Alice Smith"]
 
     def test_query_order_by_single_tuple_desc(self, clean_database):
         """order_by=('age', 'desc') puts highest ages first."""
@@ -971,8 +972,8 @@ class TestQuery:
 
         result = clean_database.query(columns=["age"], order_by=("age", "desc"))
 
-        assert result.iloc[0]["age"] == 30
-        assert result.iloc[-1]["age"] == 25
+        assert result.data.iloc[0]["age"] == 30
+        assert result.data.iloc[-1]["age"] == 25
 
     def test_query_order_by_list_of_tuples(self, clean_database):
         """Multi-column sort: age asc, then name asc — Alice before John (both age 30)."""
@@ -985,7 +986,7 @@ class TestQuery:
             order_by=[("age", "asc"), ("name", "asc")]
         )
 
-        assert list(result["name"]) == ["Jane Doe", "Alice Smith", "John Doe"]
+        assert list(result.data["name"]) == ["Jane Doe", "Alice Smith", "John Doe"]
 
     def test_query_order_by_case_insensitive_direction(self, clean_database):
         """order_by direction string is case-insensitive ('DESC' == 'desc')."""
@@ -994,7 +995,7 @@ class TestQuery:
 
         result = clean_database.query(columns=["age"], order_by=("age", "DESC"))
 
-        assert result.iloc[0]["age"] == 30
+        assert result.data.iloc[0]["age"] == 30
 
     def test_query_order_by_invalid_column_raises(self, clean_database):
         """order_by with a non-existent column raises ValueError."""
@@ -1019,7 +1020,7 @@ class TestQuery:
 
         result = clean_database.query(limit=1)
 
-        assert len(result) == 1
+        assert len(result.data) == 1
 
     def test_query_limit_exceeds_rows(self, clean_database):
         """limit larger than row count returns all rows without error."""
@@ -1028,7 +1029,7 @@ class TestQuery:
 
         result = clean_database.query(limit=100)
 
-        assert len(result) == 2
+        assert len(result.data) == 2
 
     def test_query_offset(self, clean_database):
         """offset=1 with sorting skips the first sorted row."""
@@ -1039,7 +1040,7 @@ class TestQuery:
         result = clean_database.query(columns=["name"], order_by="name", offset=1)
 
         # Sorted: Alice, Jane, John — skip Alice
-        assert list(result["name"]) == ["Jane Doe", "John Doe"]
+        assert list(result.data["name"]) == ["Jane Doe", "John Doe"]
 
     def test_query_limit_and_offset(self, clean_database):
         """limit=1, offset=1 returns exactly the second sorted row."""
@@ -1050,8 +1051,8 @@ class TestQuery:
         result = clean_database.query(columns=["name"], order_by="name", limit=1, offset=1)
 
         # Sorted: Alice, Jane, John — skip Alice, take Jane
-        assert len(result) == 1
-        assert result.iloc[0]["name"] == "Jane Doe"
+        assert len(result.data) == 1
+        assert result.data.iloc[0]["name"] == "Jane Doe"
 
     def test_query_offset_beyond_rows(self, clean_database):
         """offset beyond total row count returns empty DataFrame."""
@@ -1059,8 +1060,8 @@ class TestQuery:
 
         result = clean_database.query(offset=100)
 
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 0
+        assert isinstance(result.data, pd.DataFrame)
+        assert len(result.data) == 0
 
     def test_query_columns_filter_sort(self, clean_database):
         """Column selection, filter, and sort work together correctly."""
@@ -1074,9 +1075,9 @@ class TestQuery:
             order_by="name",
         )
 
-        assert list(result.columns) == ["name", "age"]
-        assert len(result) == 2
-        assert list(result["name"]) == ["Alice Smith", "John Doe"]
+        assert list(result.data.columns) == ["name", "age"]
+        assert len(result.data) == 2
+        assert list(result.data["name"]) == ["Alice Smith", "John Doe"]
 
     def test_query_filter_sort_paginate(self, clean_database):
         """Sort applies before pagination: filter to 2 rows, sort, take only first."""
@@ -1092,8 +1093,8 @@ class TestQuery:
             limit=1,
         )
 
-        assert len(result) == 1
-        assert result.iloc[0]["name"] == "Alice Smith"
+        assert len(result.data) == 1
+        assert result.data.iloc[0]["name"] == "Alice Smith"
 
     def test_query_all_params(self, clean_database):
         """All parameters combined: columns + filter + order_by + limit."""
@@ -1108,9 +1109,9 @@ class TestQuery:
             limit=1,
         )
 
-        assert list(result.columns) == ["name", "age"]
-        assert len(result) == 1
-        assert result.iloc[0]["name"] == "Alice Smith"
+        assert list(result.data.columns) == ["name", "age"]
+        assert len(result.data) == 1
+        assert result.data.iloc[0]["name"] == "Alice Smith"
 
 
 class TestQuerySearch:
@@ -1125,8 +1126,8 @@ class TestQuerySearch:
 
         result = clean_database.query(search="John")
 
-        assert len(result) == 1
-        assert result.iloc[0]["name"] == "John Doe"
+        assert len(result.data) == 1
+        assert result.data.iloc[0]["name"] == "John Doe"
 
     # --- Cycle 2: no match ---
 
@@ -1137,8 +1138,8 @@ class TestQuerySearch:
 
         result = clean_database.query(search="zzznomatch")
 
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 0
+        assert isinstance(result.data, pd.DataFrame)
+        assert len(result.data) == 0
 
     # --- Cycle 3: case insensitivity ---
 
@@ -1148,8 +1149,8 @@ class TestQuerySearch:
 
         result = clean_database.query(search="ALICE")
 
-        assert len(result) == 1
-        assert result.iloc[0]["name"] == "Alice Smith"
+        assert len(result.data) == 1
+        assert result.data.iloc[0]["name"] == "Alice Smith"
 
     # --- Cycle 4: OR across columns ---
 
@@ -1161,8 +1162,8 @@ class TestQuerySearch:
         # "john.doe" only appears in the email column, not the name column
         result = clean_database.query(search="john.doe")
 
-        assert len(result) == 1
-        assert result.iloc[0]["name"] == "John Doe"
+        assert len(result.data) == 1
+        assert result.data.iloc[0]["name"] == "John Doe"
 
     # --- Cycle 6: explicit search_columns ---
 
@@ -1173,7 +1174,7 @@ class TestQuerySearch:
         # "john.doe" is in email but we restrict search to name only → no match
         result = clean_database.query(search="john.doe", search_columns=["name"])
 
-        assert len(result) == 0
+        assert len(result.data) == 0
 
     # --- Cycle 7: invalid column name raises ---
 
@@ -1199,7 +1200,7 @@ class TestQuerySearch:
 
         result = clean_database.query(search=None)
 
-        assert len(result) == 3
+        assert len(result.data) == 3
 
     # --- Cycle 5: AND with filters ---
 
@@ -1212,5 +1213,115 @@ class TestQuerySearch:
 
         result = clean_database.query(search="Doe", filters={"age": 30})
 
-        assert len(result) == 1
-        assert result.iloc[0]["name"] == "John Doe"
+        assert len(result.data) == 1
+        assert result.data.iloc[0]["name"] == "John Doe"
+
+
+class TestQueryMetadata:
+    """Tests QueryResult metadata fields: total_count, has_next, has_previous."""
+
+    def test_total_count_no_pagination(self, clean_database):
+        """total_count equals len(data) when no limit/offset is used."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        result = clean_database.query()
+
+        assert result.total_count == 3
+        assert result.total_count == len(result.data)
+
+    def test_total_count_with_filter(self, clean_database):
+        """total_count reflects filtered subset, not full table size."""
+        clean_database.add_item(**TEST_ENTRY_1)  # age 30
+        clean_database.add_item(**TEST_ENTRY_2)  # age 25
+        clean_database.add_item(**TEST_ENTRY_3)  # age 30
+
+        result = clean_database.query(filters={"age": 30})
+
+        assert result.total_count == 2
+
+    def test_total_count_with_search(self, clean_database):
+        """total_count reflects search-filtered subset."""
+        clean_database.add_item(**TEST_ENTRY_1)  # name="John Doe"
+        clean_database.add_item(**TEST_ENTRY_2)  # name="Jane Doe"
+        clean_database.add_item(**TEST_ENTRY_3)  # name="Alice Smith"
+
+        result = clean_database.query(search="Doe")
+
+        assert result.total_count == 2
+
+    def test_total_count_with_pagination(self, clean_database):
+        """total_count is the unsliced total even when limit reduces returned rows."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        result = clean_database.query(limit=1, offset=0)
+
+        assert result.total_count == 3
+        assert len(result.data) == 1
+
+    def test_has_next_true_when_more_rows_exist(self, clean_database):
+        """has_next=True when offset+limit is less than total_count."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        result = clean_database.query(limit=2, offset=0)
+
+        assert result.has_next is True
+
+    def test_has_next_false_on_last_page(self, clean_database):
+        """has_next=False when offset+limit reaches or exceeds total_count."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        result = clean_database.query(limit=2, offset=2)
+
+        assert result.has_next is False
+
+    def test_has_next_false_when_no_limit(self, clean_database):
+        """has_next=False when limit is None (all rows returned)."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+
+        result = clean_database.query()
+
+        assert result.has_next is False
+
+    def test_has_previous_false_on_first_page(self, clean_database):
+        """has_previous=False when offset is None or 0."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+
+        result = clean_database.query(limit=1, offset=0)
+
+        assert result.has_previous is False
+
+    def test_has_previous_false_when_no_offset(self, clean_database):
+        """has_previous=False when offset is not provided."""
+        clean_database.add_item(**TEST_ENTRY_1)
+
+        result = clean_database.query()
+
+        assert result.has_previous is False
+
+    def test_has_previous_true_after_offset(self, clean_database):
+        """has_previous=True when offset > 0."""
+        clean_database.add_item(**TEST_ENTRY_1)
+        clean_database.add_item(**TEST_ENTRY_2)
+        clean_database.add_item(**TEST_ENTRY_3)
+
+        result = clean_database.query(limit=1, offset=1)
+
+        assert result.has_previous is True
+
+    def test_metadata_empty_result(self, clean_database):
+        """total_count=0, has_next=False, has_previous=False on empty table."""
+        result = clean_database.query()
+
+        assert result.total_count == 0
+        assert result.has_next is False
+        assert result.has_previous is False

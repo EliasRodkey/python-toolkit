@@ -25,6 +25,7 @@ Filter API:
         ``{"age": ("between", (18, 65))}``
 """
 # Standard library imports
+from dataclasses import dataclass
 from datetime import datetime, date
 from typing import List, Any
 
@@ -43,6 +44,14 @@ from pleasant_database.utils import LoggingExtras, map_dtype_list_to_sql, orm_li
 import logging
 logger = logging.getLogger(__name__)
 
+
+@dataclass
+class QueryResult:
+    """Result object returned by DatabaseManager.query()."""
+    data: pd.DataFrame
+    total_count: int
+    has_next: bool
+    has_previous: bool
 
 
 class DatabaseManager():
@@ -302,9 +311,9 @@ class DatabaseManager():
         offset: int | None = None,
         search: str | None = None,
         search_columns: list[str] | None = None,
-    ) -> pd.DataFrame:
+    ) -> QueryResult:
         """
-        Flexible DataFrame-returning query with optional column projection, filtering, sorting, and pagination.
+        Flexible query with optional column projection, filtering, sorting, and pagination.
 
         Args:
             columns (list[str] | None): Column names to return. None returns all columns.
@@ -326,7 +335,9 @@ class DatabaseManager():
                 All specified columns must exist and be string-typed, otherwise ValueError is raised.
 
         Returns:
-            pd.DataFrame: Query results. Empty DataFrame if no rows match.
+            QueryResult: Contains ``data`` (DataFrame), ``total_count`` (total matching rows before
+                pagination), ``has_next`` (more rows exist beyond current page), and
+                ``has_previous`` (rows were skipped via offset).
 
         Raises:
             ValueError: If columns is an empty list, an invalid column name is given in columns,
@@ -343,6 +354,11 @@ class DatabaseManager():
         # Normalise order_by to list[tuple[str, str]]
         normalised_order_by = self._normalise_order_by(order_by, ascending)
 
+        # Count total matching rows (before pagination)
+        count_q = self.session.query(sqlalchemy.func.count()).select_from(self.table_class)
+        count_q = self._apply_filters_and_search(count_q, filters, search, search_columns)
+        total_count = count_q.scalar()
+
         # Build base query
         if columns is None:
             q = self.session.query(self.table_class)
@@ -353,26 +369,8 @@ class DatabaseManager():
             q = self.session.query(*col_attrs)
             selecting_columns = True
 
-        # Apply filters
-        if filters is not None:
-            clauses = self._build_filter_clauses(filters)
-            q = q.filter(sqlalchemy.and_(*clauses))
-
-        # Apply search (case-insensitive partial match across string columns)
-        if search is not None:
-            col_types = self.table_class.get_column_python_types()
-            if search_columns is None:
-                resolved = [col for col, typ in col_types.items() if typ == str]
-            else:
-                self._validate_columns(search_columns, "search_columns")
-                non_str = [col for col in search_columns if col_types.get(col) != str]
-                if non_str:
-                    raise ValueError(
-                        f"search_columns must only contain string-typed columns. Non-string: {non_str}"
-                    )
-                resolved = search_columns
-            ilike_clauses = [getattr(self.table_class, col).ilike(f"%{search}%") for col in resolved]
-            q = q.filter(sqlalchemy.or_(*ilike_clauses))
+        # Apply filters and search
+        q = self._apply_filters_and_search(q, filters, search, search_columns)
 
         # Apply sorting
         for col_name, direction in normalised_order_by:
@@ -391,9 +389,14 @@ class DatabaseManager():
             logger.warning("query() returned no results.", extra={LoggingExtras.TABLE_NAME: self.table_name})
 
         if selecting_columns:
-            return pd.DataFrame(rows, columns=columns) if rows else pd.DataFrame(columns=columns)
+            df = pd.DataFrame(rows, columns=columns) if rows else pd.DataFrame(columns=columns)
         else:
-            return orm_list_to_dataframe(rows)
+            df = orm_list_to_dataframe(rows)
+
+        has_next = limit is not None and (offset or 0) + limit < total_count
+        has_previous = offset is not None and offset > 0
+
+        return QueryResult(data=df, total_count=total_count, has_next=has_next, has_previous=has_previous)
 
     def convert_orm_list_to_dataframe(self, orm_list: List[BaseTable]) -> pd.DataFrame:
         """
@@ -868,6 +871,28 @@ class DatabaseManager():
                 "operator": op
             })
             raise ValueError(f"Unsupported operator: {op}")
+
+
+    def _apply_filters_and_search(self, q, filters, search, search_columns):
+        """Apply filter and search clauses to a query. Returns the modified query."""
+        if filters is not None:
+            clauses = self._build_filter_clauses(filters)
+            q = q.filter(sqlalchemy.and_(*clauses))
+        if search is not None:
+            col_types = self.table_class.get_column_python_types()
+            if search_columns is None:
+                resolved = [col for col, typ in col_types.items() if typ == str]
+            else:
+                self._validate_columns(search_columns, "search_columns")
+                non_str = [col for col in search_columns if col_types.get(col) != str]
+                if non_str:
+                    raise ValueError(
+                        f"search_columns must only contain string-typed columns. Non-string: {non_str}"
+                    )
+                resolved = search_columns
+            ilike_clauses = [getattr(self.table_class, col).ilike(f"%{search}%") for col in resolved]
+            q = q.filter(sqlalchemy.or_(*ilike_clauses))
+        return q
 
 
     def _build_filter_clauses(self, filters: dict) -> list:

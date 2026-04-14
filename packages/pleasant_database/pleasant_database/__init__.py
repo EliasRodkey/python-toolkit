@@ -11,7 +11,7 @@ Modules:
     - utils.py:
 """
 # Metadata
-__version__ = "1.4.1"
+__version__ = "1.4.2"
 __author__ = "Elias Rodkey"
 
 # Package Level Constants
@@ -23,7 +23,7 @@ LOG_DIRECTORY = os.path.join(os.getcwd(), "data", "logs")
 from .base_table import BaseTable, DatabaseIntegrityError, ItemNotFoundError
 from .database_connections import create_engine_conn, create_session
 from .database_file import DatabaseFile
-from .database_manager import DatabaseManager
+from .database_manager import DatabaseManager, QueryResult
 from .utils import check_db_exists, is_db_file
 
 # Defines importable functions for package
@@ -34,6 +34,7 @@ __all__ = [
     "create_session",
     "DatabaseFile",
     "DatabaseManager",
+    "QueryResult",
     "BaseTable",
     "DatabaseIntegrityError"
 ]
