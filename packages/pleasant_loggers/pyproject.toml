@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pleasant-loggers"
-version = "2.0.0"
+version = "2.0.1"
 description = "robust and generic logging system for Python"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 readme = "README.md"
