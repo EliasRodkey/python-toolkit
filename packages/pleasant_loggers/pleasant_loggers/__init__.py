@@ -33,5 +33,5 @@ from ._utils import (
     LOG_FILE_DEFAULT_DIRECTORY,
 )
 
-__version__ = "2.0.0"
+__version__ = "2.0.1"
 __author__ = "Elias Rodkey"

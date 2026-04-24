@@ -8,6 +8,7 @@ creates a HandlerController singleton, and configures the root logger.
 """
 import dataclasses
 import logging
+import sys
 from typing import Optional
 
 import structlog
@@ -104,11 +105,19 @@ def configure_logging(
         ],
     )
 
+    no_color_formatter = ProcessorFormatter(
+        foreign_pre_chain=shared_processors,
+        processors=[
+            ProcessorFormatter.remove_processors_meta,
+            structlog.dev.ConsoleRenderer(colors=False),
+        ],
+    )
+
     console_formatter = ProcessorFormatter(
         foreign_pre_chain=shared_processors,
         processors=[
             ProcessorFormatter.remove_processors_meta,
-            structlog.dev.ConsoleRenderer(),
+            structlog.dev.ConsoleRenderer(colors=sys.stderr.isatty()),
         ],
     )
 
@@ -122,7 +131,7 @@ def configure_logging(
         controller.json_file_handler.setFormatter(json_formatter)
 
     if controller.readable_file_handler is not None:
-        controller.readable_file_handler.setFormatter(console_formatter)
+        controller.readable_file_handler.setFormatter(no_color_formatter)
 
     if controller.stream_handler is not None:
         controller.stream_handler.setFormatter(console_formatter)
